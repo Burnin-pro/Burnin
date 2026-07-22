@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/staff_user.dart';
@@ -8,21 +9,43 @@ class AuthService {
   static final AuthService instance = AuthService._();
 
   final _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final String _collection = 'staff_users';
 
   /// Stream of auth state changes — null when logged out.
   Stream<StaffUser?> get authStateChanges {
-    return _auth.authStateChanges().map(
-          (user) => user == null ? null : StaffUser.fromFirebaseUser(user),
-        );
+    return _auth.authStateChanges().asyncMap((user) async {
+      if (user == null) return null;
+      try {
+        final doc = await _firestore.collection(_collection).doc(user.uid).get();
+        if (doc.exists && doc.data() != null) {
+          return StaffUser.fromMap(doc.data()!, doc.id);
+        }
+      } catch (_) {}
+      return StaffUser.fromFirebaseUser(user);
+    });
   }
 
-  /// Current user synchronously (null if not logged in).
-  StaffUser? get currentUser {
+  /// Current user asynchronously since it fetches from Firestore.
+  Future<StaffUser?> getCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    try {
+      final doc = await _firestore.collection(_collection).doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        return StaffUser.fromMap(doc.data()!, doc.id);
+      }
+    } catch (_) {}
+    return StaffUser.fromFirebaseUser(user);
+  }
+
+  /// Current user synchronously (only contains Auth details, not DB details).
+  StaffUser? get currentUserAuthOnly {
     final user = _auth.currentUser;
     return user == null ? null : StaffUser.fromFirebaseUser(user);
   }
 
-  /// Sign in with email (staff emails pre-created in Firebase console).
+  /// Sign in with email.
   Future<StaffUser> signIn({
     required String email,
     required String password,
@@ -37,14 +60,25 @@ class AuthService {
         message: 'Sign in returned null user.',
       );
     }
-    return StaffUser.fromFirebaseUser(credential.user!);
+    
+    final user = credential.user!;
+    final docRef = _firestore.collection(_collection).doc(user.uid);
+    final docSnap = await docRef.get();
+    
+    if (!docSnap.exists) {
+      // Auto-create user in Firestore on first login
+      final newStaff = StaffUser.fromFirebaseUser(user);
+      await docRef.set(newStaff.toMap());
+      return newStaff;
+    } else {
+      return StaffUser.fromMap(docSnap.data()!, docSnap.id);
+    }
   }
 
   /// Sign out.
   Future<void> signOut() => _auth.signOut();
 
-  /// Change password — requires recent sign-in (re-auth handled by caller
-  /// if FirebaseAuthException code == 'requires-recent-login').
+  /// Change password — requires recent sign-in.
   Future<void> changePassword(String newPassword) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception('No user logged in.');

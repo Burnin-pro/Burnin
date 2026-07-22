@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_strings.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
@@ -44,7 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'An unexpected error occurred. Please try again.';
+        _errorMessage = AppStrings.unexpectedError;
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -76,7 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 48),
                 // Title
                 Text(
-                  'STAFF LOGIN',
+                  AppStrings.loginTitle,
                   style: AppTextStyles.headlineMedium.copyWith(
                     color: Colors.white,
                     letterSpacing: 2,
@@ -85,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Private access only',
+                  AppStrings.loginSubtitle,
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondaryDark,
                   ),
@@ -101,13 +102,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   autocorrect: false,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: 'Email',
+                    labelText: AppStrings.emailLabel,
                     prefixIcon: Icon(Icons.person_outline_rounded),
-                    hintText: 'staff@burnin.com',
+                    hintText: AppStrings.emailHint,
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Enter your email';
-                    if (!v.contains('@')) return 'Enter a valid email';
+                    if (v == null || v.trim().isEmpty) return AppStrings.errorEmptyEmail;
+                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    if (!emailRegex.hasMatch(v)) return AppStrings.errorInvalidEmail;
                     return null;
                   },
                 ),
@@ -121,7 +123,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onFieldSubmitted: (_) => _signIn(),
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: AppStrings.passwordLabel,
                     prefixIcon: const Icon(Icons.lock_outline_rounded),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -134,8 +136,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Enter your password';
-                    if (v.length < 6) return 'Password too short';
+                    if (v == null || v.isEmpty) return AppStrings.errorEmptyPassword;
+                    if (v.length < 8) return AppStrings.errorShortPassword;
+                    final passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$');
+                    if (!passwordRegex.hasMatch(v)) return AppStrings.errorWeakPassword;
                     return null;
                   },
                 ),
@@ -172,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Sign In button
                 PrimaryButton(
-                  label: 'Sign In',
+                  label: AppStrings.loginButton,
                   isLoading: _isLoading,
                   onPressed: _isLoading ? null : _signIn,
                   icon: Icons.login_rounded,

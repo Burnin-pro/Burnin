@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -28,9 +29,9 @@ void main() async {
   await Hive.initFlutter();
 
   // Initialize Firebase
-  // NOTE: Add your google-services.json to android/app/ before running.
-  // The app will throw here if the file is missing.
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   runApp(
     const ProviderScope(
