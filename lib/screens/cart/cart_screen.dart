@@ -82,11 +82,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cart = ref.watch(cartProvider);
     final upiData = QrService.instance.buildUpiQrData(amount: cart.totalAmount);
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('CART'),
         leading: BackButton(color: AppColors.amber),
@@ -113,7 +114,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   // ── Cart items ───────────────────────────────────────
                   ...cart.itemList.map((e) => _CartItemRow(item: e)),
                   const SizedBox(height: 8),
-                  const Divider(color: AppColors.dividerDark),
+                  Divider(color: Theme.of(context).colorScheme.outline),
                   // ── Total ────────────────────────────────────────────
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -122,13 +123,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       children: [
                         Text('TOTAL',
                             style: AppTextStyles.headlineSmall
-                                .copyWith(color: Colors.white, letterSpacing: 2)),
+                                .copyWith(color: Theme.of(context).colorScheme.onSurface, letterSpacing: 2)),
                         Text('₹${cart.totalAmount.toStringAsFixed(2)}',
                             style: AppTextStyles.priceTotal),
                       ],
                     ),
                   ),
-                  const Divider(color: AppColors.dividerDark),
+                  Divider(color: Theme.of(context).colorScheme.outline),
                   const SizedBox(height: 20),
 
                   // ── Bill preview ─────────────────────────────────────
@@ -141,7 +142,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     focusNode: _phoneFocus,
                     keyboardType: TextInputType.phone,
                     maxLength: 10,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                     onChanged: (_) {
                       if (_phoneError != null) {
                         setState(() => _phoneError = null);
@@ -215,10 +216,10 @@ class _CartItemRow extends ConsumerWidget {
               children: [
                 Text(item.menuItem.name,
                     style: AppTextStyles.labelMedium
-                        .copyWith(color: Colors.white)),
+                        .copyWith(color: Theme.of(context).colorScheme.onSurface)),
                 Text('₹${item.menuItem.price.toStringAsFixed(0)} each',
                     style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textSecondaryDark)),
+                        .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
               ],
             ),
           ),
@@ -258,7 +259,7 @@ class _BillPreview extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.surfaceDark,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -271,10 +272,10 @@ class _BillPreview extends StatelessWidget {
       child: Column(
         children: [
           // Logo + shop name
-          const AppLogo(size: 56),
+          AppLogo(size: 56),
           const SizedBox(height: 4),
           Text(QrService.kShopName,
-              style: AppTextStyles.wordmark.copyWith(fontSize: 22)),
+              style: AppTextStyles.wordmark.copyWith(fontSize: 22, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white)),
           const Divider(height: 20),
 
           // Item list
@@ -286,13 +287,13 @@ class _BillPreview extends StatelessWidget {
                       child: Text(
                         '${e.menuItem.name} ×${e.quantity}',
                         style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textPrimaryLight),
+                            .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryLight : Colors.white),
                       ),
                     ),
                     Text(
                       '₹${e.subtotal.toStringAsFixed(2)}',
                       style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textPrimaryLight,
+                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimaryLight : Colors.white,
                           fontWeight: FontWeight.w600),
                     ),
                   ],
@@ -319,7 +320,7 @@ class _BillPreview extends StatelessWidget {
           // QR Code
           Text('Scan to pay via UPI',
               style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondaryLight)),
+                  .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryLight : Colors.white70)),
           const SizedBox(height: 8),
           QrImageView(
             data: upiData,
@@ -338,7 +339,7 @@ class _BillPreview extends StatelessWidget {
           const SizedBox(height: 8),
           Text(QrService.kShopUpiId,
               style: AppTextStyles.bodySmall
-                  .copyWith(color: AppColors.textSecondaryLight)),
+                  .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryLight : Colors.white70)),
         ],
       ),
     );
@@ -358,11 +359,11 @@ class _EmptyCart extends StatelessWidget {
         children: [
           Icon(Icons.shopping_cart_outlined,
               size: 72,
-              color: AppColors.textSecondaryDark.withValues(alpha: 0.4)),
+              color: (Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight).withValues(alpha: 0.4)),
           const SizedBox(height: 16),
           Text('Your cart is empty',
               style: AppTextStyles.headlineSmall
-                  .copyWith(color: AppColors.textSecondaryDark)),
+                  .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
           const SizedBox(height: 24),
           PrimaryButton(label: 'Back to Menu', onPressed: onBack),
         ],

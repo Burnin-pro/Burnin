@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
 import 'package:firebase_storage/firebase_storage.dart';
@@ -73,6 +74,21 @@ class FirebaseService {
     return snap.docs.map<Order>((doc) => Order.fromFirestore(doc)).toList();
   }
 
+  /// Stream orders for a specific date (YYYY-MM-DD).
+  Stream<List<Order>> ordersStreamForDate(String date) {
+    final start = DateTime.parse(date);
+    final end = start.add(const Duration(days: 1));
+
+    return _orders
+        .where('timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+        .where('timestamp', isLessThan: Timestamp.fromDate(end))
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snap) =>
+            snap.docs.map<Order>((doc) => Order.fromFirestore(doc)).toList());
+  }
+
   // ──────────────────────────────────────────────────────────────────────────
   // Shop Status
   // ──────────────────────────────────────────────────────────────────────────
@@ -114,9 +130,9 @@ class FirebaseService {
   // ──────────────────────────────────────────────────────────────────────────
 
   /// Upload an image file to Firebase Storage, returns the download URL.
-  Future<String> uploadMenuImage(File imageFile, String fileName) async {
+  Future<String> uploadMenuImage(Uint8List imageBytes, String fileName) async {
     final ref = _storage.ref('menu_images/$fileName');
-    final task = await ref.putFile(imageFile);
+    final task = await ref.putData(imageBytes);
     return await task.ref.getDownloadURL();
   }
 }

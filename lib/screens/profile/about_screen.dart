@@ -136,7 +136,7 @@ class AboutScreen extends StatelessWidget {
                         const SizedBox(height: 12),
                         Image.asset(
                           'assets/images/codevara.png',
-                          height: 40, // Adjust size as necessary for the Codevara logo
+                          height: 80, // Adjust size as necessary for the Codevara logo
                         ),
                       ],
                     ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),

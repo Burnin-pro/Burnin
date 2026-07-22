@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -11,6 +13,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/primary_button.dart';
 import '../../widgets/veg_dot.dart';
+import '../main/main_screen.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
   /// Pass an existing item to edit, null to create new.
@@ -30,7 +33,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   String _category = 'Food';
   bool _isVeg = true;
   bool _isAvailable = true;
-  File? _pickedImage;
+  Uint8List? _imageBytes;
   bool _isUploading = false;
   bool _isSaving = false;
   String? _existingImageUrl;
@@ -61,7 +64,8 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     final picked = await picker.pickImage(
         source: source, maxWidth: 800, imageQuality: 85);
     if (picked != null) {
-      setState(() => _pickedImage = File(picked.path));
+      final bytes = await picked.readAsBytes();
+      setState(() => _imageBytes = bytes);
     }
   }
 
@@ -72,12 +76,13 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     try {
       String? imageUrl = _existingImageUrl;
 
-      if (_pickedImage != null) {
+      if (_imageBytes != null) {
         setState(() => _isUploading = true);
-        final fileName =
-            '${DateTime.now().millisecondsSinceEpoch}_${_nameController.text.replaceAll(' ', '_')}.jpg';
-        imageUrl = await FirebaseService.instance
-            .uploadMenuImage(_pickedImage!, fileName);
+        
+        // Convert the image to a base64 string and save it directly in Firestore
+        final base64String = base64Encode(_imageBytes!);
+        imageUrl = 'data:image/jpeg;base64,$base64String';
+        
         setState(() => _isUploading = false);
       }
 
@@ -94,28 +99,26 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
       await FirebaseService.instance.saveMenuItem(item);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: AppColors.maroon,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Text(
-                  widget.existingItem == null
-                      ? '${item.name} added to menu!'
-                      : '${item.name} updated!',
-                  style: AppTextStyles.bodyMedium
-                      .copyWith(color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        );
-        Navigator.of(context).pop();
+        // Clear fields
+        if (widget.existingItem == null) {
+          _nameController.clear();
+          _priceController.clear();
+          setState(() {
+            _imageBytes = null;
+            _existingImageUrl = null;
+            _category = 'Food';
+            _isVeg = true;
+            _isAvailable = true;
+          });
+        }
+
+        // Switch to menu tab and show success popup
+        final state = context.findAncestorStateOfType<State<MainScreen>>();
+        if (state is MainScreenState) {
+          (state as MainScreenState).switchToMenuAndShowSuccess(item.name);
+        } else {
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -131,9 +134,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.existingItem != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Gradient App Bar ──────────────────────────────────────────
@@ -187,10 +191,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                       child: Container(
                         height: 200,
                         decoration: BoxDecoration(
-                          color: AppColors.cardDark,
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                              color: AppColors.dividerDark, width: 0.5),
+                              color: Theme.of(context).colorScheme.outline, width: 0.5),
                         ),
                         child: _isUploading
                             ? Center(
@@ -202,16 +206,15 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                                     const SizedBox(height: 12),
                                     Text('Uploading...',
                                         style: AppTextStyles.bodySmall.copyWith(
-                                            color: AppColors.textSecondaryDark)),
+                                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                                   ],
                                 ),
                               )
-                            : _pickedImage != null
+                            : _imageBytes != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(18),
-                                    child: Image.file(_pickedImage!,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity),
+                                    child: Image.memory(_imageBytes!,
+                                        width: double.infinity, fit: BoxFit.cover),
                                   )
                                 : _existingImageUrl != null
                                     ? ClipRRect(
@@ -244,8 +247,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                                           Text('Tap to add photo',
                                               style: AppTextStyles.bodyMedium
                                                   .copyWith(
-                                                      color: AppColors
-                                                          .textSecondaryDark)),
+                                                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                                         ],
                                       ),
                       ),
@@ -311,14 +313,13 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                                       : null,
                                   color: selected
                                       ? null
-                                      : AppColors.cardDark,
+                                      : Theme.of(context).cardColor,
                                   borderRadius:
                                       BorderRadius.circular(12),
                                   border: selected
                                       ? null
                                       : Border.all(
-                                          color:
-                                              AppColors.dividerDark),
+                                          color: Theme.of(context).colorScheme.outline),
                                   boxShadow: selected
                                       ? [
                                           BoxShadow(
@@ -342,8 +343,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                                                 .local_drink_rounded,
                                         color: selected
                                             ? Colors.white
-                                            : AppColors
-                                                .textSecondaryDark,
+                                            : Theme.of(context).colorScheme.onSurfaceVariant,
                                         size: 18,
                                       ),
                                       const SizedBox(width: 8),
@@ -353,8 +353,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                                               .copyWith(
                                             color: selected
                                                 ? Colors.white
-                                                : AppColors
-                                                    .textSecondaryDark,
+                                                : Theme.of(context).colorScheme.onSurfaceVariant,
                                           )),
                                     ],
                                   ),
@@ -400,10 +399,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: AppColors.cardDark,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                            color: AppColors.dividerDark, width: 0.5),
+                            color: Theme.of(context).colorScheme.outline, width: 0.5),
                       ),
                       child: Row(
                         children: [
@@ -429,7 +428,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                           const SizedBox(width: 12),
                           Text('Available for Order',
                               style: AppTextStyles.bodyMedium
-                                  .copyWith(color: Colors.white)),
+                                  .copyWith(color: Theme.of(context).colorScheme.onSurface)),
                           const Spacer(),
                           Switch(
                             value: _isAvailable,
@@ -465,9 +464,11 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   }
 
   void _showImageSourceDialog() {
+    if (_isSaving || _isUploading) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardDark,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -480,14 +481,14 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.dividerDark,
+                color: Theme.of(context).colorScheme.outline,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            Text('Add Photo',
-                style: AppTextStyles.headlineSmall
-                    .copyWith(color: Colors.white)),
+            Text('Select Image',
+                style: AppTextStyles.headlineSmall.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface, letterSpacing: 1)),
             const SizedBox(height: 16),
             ListTile(
               leading: Container(
@@ -501,10 +502,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
               ),
               title: Text('Take a photo',
                   style:
-                      AppTextStyles.bodyLarge.copyWith(color: Colors.white)),
+                      AppTextStyles.bodyLarge.copyWith(color: Theme.of(context).colorScheme.onSurface)),
               subtitle: Text('Use your camera',
                   style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.textSecondaryDark)),
+                      .copyWith(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
@@ -522,10 +523,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
               ),
               title: Text('Choose from gallery',
                   style:
-                      AppTextStyles.bodyLarge.copyWith(color: Colors.white)),
+                      AppTextStyles.bodyLarge.copyWith(color: Theme.of(context).colorScheme.onSurface)),
               subtitle: Text('Pick an existing image',
                   style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.textSecondaryDark)),
+                      .copyWith(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.gallery);
@@ -557,20 +558,21 @@ class _StyledField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.dividerDark, width: 0.5),
+        border: Border.all(color: Theme.of(context).colorScheme.outline, width: 0.5),
       ),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        style: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
+        style: AppTextStyles.bodyLarge.copyWith(color: Theme.of(context).colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.textSecondaryDark),
+              .copyWith(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
           prefixIcon: Icon(icon, color: AppColors.amber, size: 22),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -601,7 +603,7 @@ class _SectionLabel extends StatelessWidget {
         const SizedBox(width: 8),
         Text(label,
             style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.textSecondaryDark, letterSpacing: 1.5)),
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight, letterSpacing: 1.5)),
       ],
     );
   }

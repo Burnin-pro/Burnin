@@ -9,7 +9,9 @@ import '../../screens/cart/cart_screen.dart';
 import '../../services/firebase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_logo.dart';
 import '../../widgets/primary_button.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class PaymentScreen extends ConsumerStatefulWidget {
   const PaymentScreen({super.key});
@@ -22,6 +24,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   PaymentMode? _selectedMode;
   bool _isSaving = false;
   bool _showSuccess = false;
+  double _confirmedTotal = 0.0;
 
   Future<void> _confirmOrder() async {
     if (_selectedMode == null) {
@@ -55,12 +58,14 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
         staffId: user?.uid ?? 'unknown',
       );
 
+      final orderTotal = cart.totalAmount;
       await FirebaseService.instance.saveOrder(order);
       ref.read(cartProvider.notifier).clearCart();
 
       setState(() {
         _isSaving = false;
         _showSuccess = true;
+        _confirmedTotal = orderTotal;
       });
 
       // Auto navigate back to menu after success animation
@@ -85,27 +90,59 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
 
     if (_showSuccess) {
       return Scaffold(
-        backgroundColor: AppColors.scaffoldDark,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Lottie.asset(
-                'assets/lottie/flame_burst.json',
-                width: 180,
-                height: 180,
-                repeat: false,
+              // Razorpay style Green Check Animation
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF43A047),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2E7D32).withValues(alpha: 0.4),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 70,
+                ),
+              ).animate().scale(
+                begin: const Offset(0.1, 0.1),
+                duration: 600.ms,
+                curve: Curves.elasticOut,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               Text('Order Confirmed!',
-                  style: AppTextStyles.headlineMedium
-                      .copyWith(color: Colors.white)),
-              const SizedBox(height: 8),
-              Text(
-                '${_selectedMode!.label} • ₹${cart.totalAmount.toStringAsFixed(2)}',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryDark),
-              ),
+                  style: AppTextStyles.headlineMedium.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  )).animate().fadeIn(delay: 200.ms),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_selectedMode!.label} • ₹${_confirmedTotal.toStringAsFixed(2)}',
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.textSecondaryDark
+                        : AppColors.textSecondaryLight,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ).animate().fadeIn(delay: 400.ms),
             ],
           ),
         ),
@@ -113,25 +150,33 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('PAYMENT MODE'),
         leading: BackButton(color: AppColors.amber),
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // App Logo
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 24),
+                child: AppLogo(size: 60),
+              ),
+            ),
             // ── Order summary ────────────────────────────────────────────
             Text('HOW WAS THIS PAID?',
                 style: AppTextStyles.headlineSmall.copyWith(
-                    color: Colors.white, letterSpacing: 1.5)),
+                    color: Theme.of(context).colorScheme.onSurface, letterSpacing: 1.5)),
             const SizedBox(height: 6),
             Text(
               '${cart.totalItemCount} item${cart.totalItemCount > 1 ? 's' : ''} • ₹${cart.totalAmount.toStringAsFixed(2)}',
               style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.textSecondaryDark),
+                  .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
             ),
             const SizedBox(height: 36),
 
@@ -191,16 +236,17 @@ class _PaymentModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 28),
         decoration: BoxDecoration(
-          color: selected ? AppColors.maroon : AppColors.cardDark,
+          color: selected ? AppColors.maroon : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? AppColors.amber : AppColors.dividerDark,
+            color: selected ? AppColors.amber : Theme.of(context).colorScheme.outline,
             width: selected ? 2 : 0.5,
           ),
           boxShadow: selected
@@ -218,14 +264,14 @@ class _PaymentModeCard extends StatelessWidget {
             Icon(
               icon,
               size: 40,
-              color: selected ? Colors.white : AppColors.textSecondaryDark,
+              color: selected ? Colors.white : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
             ),
             const SizedBox(height: 12),
             Text(
               label,
               style: AppTextStyles.headlineSmall.copyWith(
                 color:
-                    selected ? Colors.white : AppColors.textSecondaryDark,
+                    selected ? Colors.white : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                 letterSpacing: 2,
               ),
             ),

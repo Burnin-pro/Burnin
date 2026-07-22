@@ -1,9 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -17,13 +20,23 @@ import '../../widgets/primary_button.dart';
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return 'B';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length > 1) {
+      return (parts[0].substring(0, 1) + parts[1].substring(0, 1)).toUpperCase();
+    }
+    return parts[0].substring(0, 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Gradient Header with Avatar ────────────────────────────────
@@ -67,20 +80,37 @@ class ProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 24),
 
                       // Avatar with fire beam ring
-                      _FireBeamAvatar(
-                        size: 100,
-                        initial: (user?.displayName ?? 'S')
-                            .substring(0, 1)
-                            .toUpperCase(),
-                      ).animate().fadeIn(duration: 500.ms).scale(
-                          begin: const Offset(0.85, 0.85),
-                          curve: Curves.easeOutBack),
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          _FireBeamAvatar(
+                            size: 100,
+                            initial: _getInitials(user?.displayName != null && user!.displayName!.isNotEmpty && user.displayName != 'Burnin' ? user.displayName! : (user?.email?.split('@').first ?? 'User')),
+                          ).animate().fadeIn(duration: 500.ms).scale(
+                              begin: const Offset(0.85, 0.85),
+                              curve: Curves.easeOutBack),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: AppColors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.add_a_photo_rounded, color: Colors.white, size: 18),
+                            ).animate().scale(delay: 600.ms, curve: Curves.elasticOut),
+                          ),
+                        ],
+                      ),
 
                       const SizedBox(height: 16),
 
                       // Name
                       Text(
-                        user?.displayName ?? 'Staff',
+                        user?.displayName != null && user!.displayName!.isNotEmpty && user.displayName != 'Burnin' 
+                            ? user.displayName! 
+                            : (user?.email?.split('@').first ?? 'User'),
                         style: AppTextStyles.headlineMedium
                             .copyWith(color: Colors.white, fontSize: 24),
                       ).animate().fadeIn(delay: 150.ms),
@@ -136,8 +166,8 @@ class ProfileScreen extends ConsumerWidget {
                   iconBg: AppColors.orange,
                   title: 'Change Password',
                   subtitle: 'Update your credentials',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textSecondaryDark),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                   onTap: () => _showChangePasswordSheet(context),
                 ).animate().fadeIn(delay: 150.ms),
 
@@ -146,8 +176,8 @@ class ProfileScreen extends ConsumerWidget {
                   iconBg: AppColors.amber,
                   title: 'Notifications',
                   subtitle: 'Manage alerts',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textSecondaryDark),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                 ).animate().fadeIn(delay: 200.ms),
 
                 const SizedBox(height: 28),
@@ -157,8 +187,8 @@ class ProfileScreen extends ConsumerWidget {
                   iconBg: AppColors.vegGreen,
                   title: 'About',
                   subtitle: 'App version and info',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textSecondaryDark),
+                  trailing: Icon(Icons.chevron_right_rounded,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                   onTap: () => Navigator.of(context).pushNamed('/about'),
                 ).animate().fadeIn(delay: 250.ms),
 
@@ -200,7 +230,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ).animate().fadeIn(delay: 350.ms),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 120),
               ]),
             ),
           ),
@@ -210,22 +240,24 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Future<bool?> _confirmLogout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardDark,
+        backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Log Out',
-            style: AppTextStyles.headlineSmall.copyWith(color: Colors.white)),
+            style: AppTextStyles.headlineSmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurface)),
         content: Text('Are you sure you want to log out?',
-            style: AppTextStyles.bodyMedium
-                .copyWith(color: AppColors.textSecondaryDark)),
+            style: AppTextStyles.bodyMedium.copyWith(
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('Cancel',
-                style: AppTextStyles.labelMedium
-                    .copyWith(color: AppColors.textSecondaryDark)),
+                style: AppTextStyles.labelMedium.copyWith(
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -242,7 +274,7 @@ class ProfileScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.cardDark,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -266,9 +298,13 @@ class _FireBeamAvatarState extends State<_FireBeamAvatar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
+  String? _base64Image;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
+    _base64Image = FirebaseAuth.instance.currentUser?.photoURL;
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
@@ -281,11 +317,32 @@ class _FireBeamAvatarState extends State<_FireBeamAvatar>
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final base64String = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        
+        setState(() {
+          _base64Image = base64String;
+        });
+
+        // Save persistently to user profile
+        await FirebaseAuth.instance.currentUser?.updatePhotoURL(base64String);
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
+    return GestureDetector(
+      onTap: _pickImage,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
         return Container(
           width: widget.size + 8,
           height: widget.size + 8,
@@ -321,18 +378,25 @@ class _FireBeamAvatarState extends State<_FireBeamAvatar>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: AppColors.flameGradientHorizontal,
+          image: _base64Image != null && _base64Image!.contains(',')
+              ? DecorationImage(
+                  image: MemoryImage(base64Decode(_base64Image!.split(',').last)),
+                  fit: BoxFit.cover)
+              : null,
         ),
         child: Center(
-          child: Text(
-            widget.initial,
-            style: AppTextStyles.headlineLarge.copyWith(
-              color: Colors.white,
-              fontSize: widget.size * 0.4,
-            ),
-          ),
+          child: _base64Image == null
+              ? Text(
+                  widget.initial,
+                  style: AppTextStyles.headlineLarge.copyWith(
+                    color: Colors.white,
+                    fontSize: widget.size * 0.4,
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -427,23 +491,26 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           ),
           const SizedBox(height: 20),
           Text('CHANGE PASSWORD',
-              style: AppTextStyles.headlineSmall
-                  .copyWith(color: Colors.white, letterSpacing: 1.5)),
+              style: AppTextStyles.headlineSmall.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface, letterSpacing: 1.5)),
           const SizedBox(height: 20),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.dividerDark),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: TextField(
               controller: _currentPwController,
               obscureText: _obscureCurrent,
-              style: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
+              style: AppTextStyles.bodyLarge.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Current Password',
-                hintStyle: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryDark),
+                hintStyle: AppTextStyles.bodyMedium.copyWith(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? AppColors.textSecondaryDark 
+                        : AppColors.textSecondaryLight),
                 prefixIcon:
                     const Icon(Icons.lock_outline, color: AppColors.amber),
                 border: InputBorder.none,
@@ -463,18 +530,21 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.dividerDark),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: TextField(
               controller: _newPwController,
               obscureText: _obscureNew,
-              style: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
+              style: AppTextStyles.bodyLarge.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'New Password',
-                hintStyle: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryDark),
+                hintStyle: AppTextStyles.bodyMedium.copyWith(
+                    color: Theme.of(context).brightness == Brightness.dark 
+                        ? AppColors.textSecondaryDark 
+                        : AppColors.textSecondaryLight),
                 prefixIcon: const Icon(Icons.lock_reset_outlined,
                     color: AppColors.amber),
                 border: InputBorder.none,
@@ -533,6 +603,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
@@ -546,7 +617,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(label,
             style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.textSecondaryDark, letterSpacing: 2)),
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight, letterSpacing: 2)),
       ],
     );
   }
@@ -572,12 +643,13 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerDark, width: 0.5),
+        border: Border.all(color: Theme.of(context).colorScheme.outline, width: 0.5),
       ),
       child: ListTile(
         onTap: onTap,
@@ -593,10 +665,11 @@ class _SettingsTile extends StatelessWidget {
           child: Icon(icon, color: iconBg, size: 22),
         ),
         title: Text(title,
-            style: AppTextStyles.labelMedium.copyWith(color: Colors.white)),
+            style: AppTextStyles.labelMedium.copyWith(
+                color: Theme.of(context).colorScheme.onSurface)),
         subtitle: Text(subtitle,
-            style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondaryDark)),
+            style: AppTextStyles.bodySmall.copyWith(
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
         trailing: trailing,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

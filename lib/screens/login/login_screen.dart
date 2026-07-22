@@ -1,6 +1,10 @@
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+
+import '../../services/auth_service.dart';
 
 import '../../core/constants/app_strings.dart';
 import '../../theme/app_colors.dart';
@@ -47,18 +51,38 @@ class _LoginScreenState extends State<LoginScreen>
       _errorMessage = null;
     });
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    final name = _nameController.text.trim();
+    final password = _passwordController.text;
 
-    if (_nameController.text.trim() == 'Muthupandi' &&
-        _passwordController.text == 'Realmec13') {
+    try {
+      final email = name.contains('@') ? name : '${name.toLowerCase().replaceAll(' ', '')}@burnin.com';
+
+      try {
+        await AuthService.instance.signIn(email: email, password: password);
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'user-not-found' || e.code == 'invalid-credential' || e.code == 'wrong-password') {
+          try {
+            final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: password);
+            await cred.user?.updateDisplayName(name);
+            await AuthService.instance.signIn(email: email, password: password);
+          } catch (e2) {
+             throw e; // Throw original error if registration fails (e.g. wrong password but user exists)
+          }
+        } else {
+          rethrow;
+        }
+      }
+
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/menu');
       }
-    } else {
-      setState(() {
-        _errorMessage = 'Incorrect name or password.';
-        _isLoading = false;
-      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -96,49 +120,64 @@ class _LoginScreenState extends State<LoginScreen>
           ),
         ),
         const SizedBox(height: 8),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          decoration: BoxDecoration(
-            color: focused
+        TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          obscureText: obscure,
+          textInputAction: action,
+          onFieldSubmitted: onSubmitted,
+          style: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.white38),
+            prefixIcon: Icon(icon,
+                color: focused ? AppColors.amberLight : Colors.white54,
+                size: 22),
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: focused
                 ? Colors.white.withValues(alpha: 0.15)
                 : Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: focused
-                  ? AppColors.amberLight
-                  : Colors.white.withValues(alpha: 0.15),
-              width: focused ? 1.5 : 1,
+            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
             ),
-            boxShadow: focused
-                ? [
-                    BoxShadow(
-                      color: AppColors.amber.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : [],
-          ),
-          child: TextFormField(
-            controller: controller,
-            focusNode: focusNode,
-            obscureText: obscure,
-            textInputAction: action,
-            onFieldSubmitted: onSubmitted,
-            style: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: AppTextStyles.bodyMedium
-                  .copyWith(color: Colors.white38),
-              prefixIcon: Icon(icon,
-                  color: focused ? AppColors.amberLight : Colors.white54,
-                  size: 22),
-              suffixIcon: suffixIcon,
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 1,
+              ),
             ),
-            validator: validator,
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: AppColors.amberLight,
+                width: 1.5,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: Colors.redAccent,
+                width: 1.5,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(
+                color: Colors.redAccent,
+                width: 1.5,
+              ),
+            ),
+            errorStyle: const TextStyle(
+              color: Colors.amber,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          validator: validator,
         ),
       ],
     );
@@ -200,6 +239,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     horizontal: 28),
                                 child: Form(
                                   key: _formKey,
+                                  autovalidateMode: AutovalidateMode.onUserInteraction,
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -233,13 +273,13 @@ class _LoginScreenState extends State<LoginScreen>
                                       _buildField(
                                         controller: _nameController,
                                         focusNode: _nameFocus,
-                                        label: 'Name',
-                                        hint: 'Enter your name',
+                                        label: 'User Name',
+                                        hint: 'Enter your user name',
                                         icon:
                                             Icons.person_outline_rounded,
                                         validator: (v) => v == null ||
                                                 v.isEmpty
-                                            ? 'Please enter your name'
+                                            ? 'Please enter your user name'
                                             : null,
                                       ).animate().fadeIn(delay: 250.ms).slideY(
                                           begin: 0.08, end: 0),

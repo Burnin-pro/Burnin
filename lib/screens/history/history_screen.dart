@@ -27,14 +27,14 @@ final selectedDateProvider = StateProvider<DateTime>((ref) {
 
 /// Orders for the selected date.
 final ordersForDateProvider =
-    FutureProvider.family<List<Order>, String>((ref, dateKey) {
-  return FirebaseService.instance.ordersForDate(dateKey);
+    StreamProvider.family<List<Order>, String>((ref, dateKey) {
+  return FirebaseService.instance.ordersStreamForDate(dateKey);
 });
 
 /// Shop status for selected date.
 final shopStatusForDateProvider =
-    FutureProvider.family<ShopStatus, String>((ref, dateKey) {
-  return FirebaseService.instance.getShopStatus(dateKey);
+    StreamProvider.family<ShopStatus, String>((ref, dateKey) {
+  return FirebaseService.instance.shopStatusStream(dateKey);
 });
 
 class HistoryScreen extends ConsumerWidget {
@@ -44,12 +44,26 @@ class HistoryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dates = ref.watch(availableDatesProvider);
     final selectedDate = ref.watch(selectedDateProvider);
+    
+    // Auto-refresh dates if the day rolled over
+    if (dates.isNotEmpty) {
+      final now = DateTime.now();
+      if (dates.first.day != now.day || dates.first.month != now.month || dates.first.year != now.year) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.invalidate(availableDatesProvider);
+          ref.read(selectedDateProvider.notifier).state = DateTime(now.year, now.month, now.day);
+        });
+      }
+    }
+
     final dateKey = DateFormat('yyyy-MM-dd').format(selectedDate);
     final ordersAsync = ref.watch(ordersForDateProvider(dateKey));
     final shopStatusAsync = ref.watch(shopStatusForDateProvider(dateKey));
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Gradient Header ──────────────────────────────────────────
@@ -82,6 +96,22 @@ class HistoryScreen extends ConsumerWidget {
                                 .copyWith(color: Colors.white, letterSpacing: 2, fontSize: 20),
                           ),
                           const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              final orders = ordersAsync.value ?? [];
+                              _showSalesCalculatorDialog(context, orders, selectedDate);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                              ),
+                              child: const Icon(Icons.calculate_rounded, color: Colors.white, size: 20),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           GestureDetector(
                             onTap: () {
                               final now = DateTime.now();
@@ -265,17 +295,17 @@ class _OrdersContent extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.cardDark,
+                  color: Theme.of(context).cardColor,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.receipt_long_outlined,
                     size: 48,
-                    color: AppColors.textSecondaryDark.withValues(alpha: 0.5)),
+                    color: (Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight).withValues(alpha: 0.5)),
               ),
               const SizedBox(height: 16),
               Text('No orders on this day',
                   style: AppTextStyles.bodyMedium
-                      .copyWith(color: AppColors.textSecondaryDark)),
+                      .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
             ],
           ),
         ),
@@ -295,7 +325,7 @@ class _OrdersContent extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   AppColors.maroon.withValues(alpha: 0.6),
-                  AppColors.cardDark,
+                  Theme.of(context).cardColor,
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -313,16 +343,17 @@ class _OrdersContent extends StatelessWidget {
                       Text(
                           DateFormat('EEEE, dd MMM').format(selectedDate),
                           style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondaryDark)),
+                              color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                       const SizedBox(height: 6),
                       Text('TOTAL SALES',
                           style: AppTextStyles.labelSmall.copyWith(
-                              color: Colors.white54,
+                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : AppColors.textSecondaryLight,
                               letterSpacing: 1.5)),
                       const SizedBox(height: 4),
                       Text('₹${totalSales.toStringAsFixed(0)}',
-                          style: AppTextStyles.priceTotal
-                              .copyWith(fontSize: 30)),
+                          style: AppTextStyles.priceTotal.copyWith(
+                              fontSize: 30,
+                              color: Theme.of(context).colorScheme.onSurface)),
                     ],
                   ),
                 ),
@@ -339,7 +370,7 @@ class _OrdersContent extends StatelessWidget {
                               color: AppColors.amber, fontSize: 28)),
                       Text('orders',
                           style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.textSecondaryDark)),
+                              .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                     ],
                   ),
                 ),
@@ -363,7 +394,7 @@ class _OrdersContent extends StatelessWidget {
               const SizedBox(width: 8),
               Text('TRANSACTIONS',
                   style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.textSecondaryDark,
+                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                       letterSpacing: 2)),
             ],
           ),
@@ -395,9 +426,9 @@ class _OrderCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerDark, width: 0.5),
+        border: Border.all(color: Theme.of(context).colorScheme.outline, width: 0.5),
       ),
       child: Row(
         children: [
@@ -531,4 +562,109 @@ class _ErrorState extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showSalesCalculatorDialog(
+    BuildContext context, List<Order> orders, DateTime date) {
+  final totalSales = orders.fold<double>(0, (sum, o) => sum + o.total);
+  final totalOrders = orders.length;
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.calculate_rounded,
+                    size: 40, color: AppColors.orange),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Daily Summary',
+                style: AppTextStyles.headlineSmall.copyWith(
+                  color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('dd MMM yyyy').format(date),
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: isDark ? Colors.white70 : AppColors.textSecondaryLight,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.cardDark : AppColors.cardLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: isDark ? AppColors.dividerDark : Colors.grey.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Orders Count:',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                                color: isDark ? Colors.white70 : AppColors.textSecondaryLight)),
+                        Text('$totalOrders',
+                            style: AppTextStyles.labelMedium.copyWith(
+                                color: isDark ? Colors.white : AppColors.textPrimaryLight)),
+                      ],
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(height: 1),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Total Revenue:',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                                color: isDark ? Colors.white70 : AppColors.textSecondaryLight)),
+                        Text('₹${totalSales.toStringAsFixed(0)}',
+                            style: AppTextStyles.headlineSmall.copyWith(
+                                color: AppColors.vegGreen)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.maroon,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Close',
+                      style: TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }

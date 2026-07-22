@@ -1,15 +1,22 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/app_logo.dart';
 
 // Import the sub-screens
 import '../menu/menu_screen.dart';
 import '../add_item/add_item_screen.dart';
 import '../history/history_screen.dart';
 import '../profile/profile_screen.dart';
+
+/// Abstract interface so child screens can call switchToMenuAndShowSuccess
+abstract class MainScreenState {
+  void switchToMenuAndShowSuccess(String itemName);
+}
 
 class MainScreen extends ConsumerStatefulWidget {
   const MainScreen({super.key});
@@ -18,7 +25,7 @@ class MainScreen extends ConsumerStatefulWidget {
   ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends ConsumerState<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> implements MainScreenState {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
@@ -29,9 +36,32 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   ];
 
   @override
+  void switchToMenuAndShowSuccess(String itemName) {
+    setState(() => _currentIndex = 0);
+    // Show the success popup after switching tab
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showGeneralDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'ItemAdded',
+        barrierColor: Colors.black.withValues(alpha: 0.6),
+        transitionDuration: const Duration(milliseconds: 400),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            _ItemAddedPopup(itemName: itemName),
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          return Transform.scale(
+            scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack).value,
+            child: FadeTransition(opacity: animation, child: child),
+          );
+        },
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // allows the body to flow underneath the floating nav
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -204,4 +234,174 @@ class _NavBarItem extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Item Added Success Popup ─────────────────────────────────────────────────
+class _ItemAddedPopup extends StatefulWidget {
+  final String itemName;
+  const _ItemAddedPopup({required this.itemName});
+
+  @override
+  State<_ItemAddedPopup> createState() => _ItemAddedPopupState();
+}
+
+class _ItemAddedPopupState extends State<_ItemAddedPopup> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 5), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 340,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2E7D32), // Rich green
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1B5E20).withValues(alpha: 0.5),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Wavy top (White)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 220,
+                child: CustomPaint(
+                  painter: _SuccessWavyPainter(),
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Green check icon
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF43A047),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2E7D32).withValues(alpha: 0.4),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: Colors.white,
+                        size: 50,
+                      ),
+                    ).animate().scale(
+                      begin: const Offset(0.3, 0.3),
+                      duration: 600.ms,
+                      curve: Curves.easeOutBack,
+                    ),
+                    const SizedBox(height: 70),
+
+                    Text(
+                      'Added Successfully!',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
+                    const SizedBox(height: 10),
+
+                    Text(
+                      '"${widget.itemName}" has been added to the menu.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white70,
+                        fontSize: 15,
+                      ),
+                    ).animate().fadeIn(delay: 300.ms),
+                    const SizedBox(height: 32),
+
+                    // Close Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF2E7D32),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: Text(
+                          'CLOSE',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: const Color(0xFF2E7D32),
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 400.ms).scale(curve: Curves.easeOutBack),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Wavy Painter for Success Popup ──────────────────────────────────────────
+class _SuccessWavyPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final path = Path();
+    path.lineTo(0, size.height * 0.6);
+    path.quadraticBezierTo(
+        size.width * 0.25, size.height * 0.9,
+        size.width * 0.5, size.height * 0.6);
+    path.quadraticBezierTo(
+        size.width * 0.75, size.height * 0.3,
+        size.width, size.height * 0.8);
+    path.lineTo(size.width, 0);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,8 +90,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final cart = ref.watch(cartProvider);
     final shopAsync = ref.watch(shopStatusTodayProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.scaffoldDark,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
           // ── Premium Header with Logo ─────────────────────────────────────
@@ -130,95 +133,81 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                               
                               const Spacer(),
                               
-                              // Right: Action Buttons
-                              _HeaderIconButton(
-                                icon: Icons.add_circle_outline_rounded,
-                                onTap: () => Navigator.of(context).pushNamed('/add-item'),
-                              ),
-                              const SizedBox(width: 8),
-                              _HeaderIconButton(
-                                icon: Icons.person_outline_rounded,
-                                onTap: () => Navigator.of(context).pushNamed('/profile'),
+                              // Right: Shop Open/Close toggle
+                              shopAsync.when(
+                                data: (isOpen) => GestureDetector(
+                                  onTap: () => _toggleShopStatus(isOpen),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isOpen
+                                          ? AppColors.vegGreen.withValues(alpha: 0.1)
+                                          : Colors.black.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: isOpen
+                                            ? AppColors.vegGreen
+                                            : Colors.black38,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 10,
+                                          height: 10,
+                                          decoration: BoxDecoration(
+                                            color: isOpen
+                                                ? AppColors.vegGreen
+                                                : AppColors.nonVegRed,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          isOpen ? 'OPEN' : 'CLOSED',
+                                          style: AppTextStyles.labelSmall.copyWith(
+                                            color: isOpen ? AppColors.vegGreen : AppColors.textPrimaryLight,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
                               ),
                             ],
                           ),
-                          
-                          const SizedBox(height: 16),
-                          
-                          // Shop toggle
-                          shopAsync.when(
-                            data: (isOpen) => GestureDetector(
-                              onTap: () => _toggleShopStatus(isOpen),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 300),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isOpen
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : Colors.black.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isOpen
-                                        ? Colors.white
-                                        : Colors.white54,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                        color: isOpen
-                                            ? AppColors.vegGreen
-                                            : AppColors.nonVegRed,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      isOpen ? 'OPEN' : 'CLOSED',
-                                      style: AppTextStyles.labelSmall.copyWith(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
-                          
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 54),
 
                       // Search Bar
                       Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05)),
                         ),
                         child: TextField(
                           controller: _searchController,
-                          style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                          style: AppTextStyles.bodyMedium.copyWith(color: isDark ? Colors.white : AppColors.textPrimaryLight),
                           onChanged: (v) =>
                               ref.read(searchQueryProvider.notifier).state = v,
                           decoration: InputDecoration(
                             hintText: 'Search menu...',
-                            hintStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.white54),
-                            prefixIcon: const Icon(Icons.search_rounded,
-                                color: Colors.white70, size: 22),
+                            hintStyle: AppTextStyles.bodyMedium.copyWith(color: isDark ? Colors.white54 : AppColors.textSecondaryLight),
+                            prefixIcon: Icon(Icons.search_rounded,
+                                color: isDark ? Colors.white70 : AppColors.textSecondaryLight, size: 22),
                             suffixIcon: searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.close,
-                                        color: Colors.white70, size: 20),
+                                    icon: Icon(Icons.close,
+                                        color: isDark ? Colors.white70 : AppColors.textSecondaryLight, size: 20),
                                     onPressed: () {
                                       _searchController.clear();
                                       ref.read(searchQueryProvider.notifier).state = '';
@@ -261,11 +250,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 8),
                           decoration: BoxDecoration(
-                            gradient: selected ? AppColors.flameGradientHorizontal : null,
-                            color: selected ? null : AppColors.cardDark,
+                            color: selected
+                                ? AppColors.maroon
+                                : Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(20),
-                            border: selected ? null : Border.all(
-                              color: AppColors.dividerDark,
+                            border: Border.all(
+                              color: selected
+                                  ? AppColors.maroon
+                                  : Theme.of(context).colorScheme.outline,
                               width: 0.5,
                             ),
                             boxShadow: selected
@@ -273,7 +265,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                     BoxShadow(
                                       color: AppColors.maroon.withValues(alpha: 0.4),
                                       blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                      offset: const Offset(0, 3),
                                     ),
                                   ]
                                 : null,
@@ -283,7 +275,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                             style: AppTextStyles.pill.copyWith(
                               color: selected
                                   ? Colors.white
-                                  : AppColors.textSecondaryDark,
+                                  : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                             ),
                           ),
                         ),
@@ -360,16 +352,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.cloud_off_rounded,
-                        size: 48, color: AppColors.textSecondaryDark),
+                    Icon(Icons.cloud_off_rounded,
+                        size: 48, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                     const SizedBox(height: 12),
                     Text('Could not load menu',
                         style: AppTextStyles.bodyMedium
-                            .copyWith(color: AppColors.textSecondaryDark)),
+                            .copyWith(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                     const SizedBox(height: 8),
                     Text('Check your connection',
                         style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textSecondaryDark)),
+                            .copyWith(color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                   ],
                 ),
               ),
@@ -420,15 +412,16 @@ class _MenuItemCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final qty = ref.watch(
         cartProvider.select((s) => s.quantityOf(item.id)));
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: qty > 0 ? AppColors.amber.withValues(alpha: 0.5) : AppColors.dividerDark,
+          color: qty > 0 ? AppColors.amber.withValues(alpha: 0.5) : Theme.of(context).colorScheme.outline,
           width: qty > 0 ? 1.5 : 0.5,
         ),
         boxShadow: qty > 0
@@ -453,12 +446,18 @@ class _MenuItemCard extends ConsumerWidget {
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(18)),
                   child: item.imageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: item.imageUrl!,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => _PlaceholderImage(),
-                        )
+                      ? (item.imageUrl!.startsWith('data:image')
+                          ? Image.memory(
+                              base64Decode(item.imageUrl!.split(',').last),
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: item.imageUrl!,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => _PlaceholderImage(),
+                            ))
                       : _PlaceholderImage(),
                 ),
                 // Veg/NonVeg badge top-left
@@ -489,7 +488,7 @@ class _MenuItemCard extends ConsumerWidget {
                   Text(
                     item.name,
                     style: AppTextStyles.labelMedium.copyWith(
-                      color: Colors.white,
+                      color: isDark ? Colors.white : AppColors.textPrimaryLight,
                       fontSize: 13,
                     ),
                     maxLines: 2,
@@ -550,7 +549,7 @@ class _CartBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           gradient: AppColors.flameGradientHorizontal,
