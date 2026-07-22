@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/order.dart';
@@ -49,81 +50,141 @@ class HistoryScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldDark,
-      appBar: AppBar(
-        title: const Text('HISTORY'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.today_rounded, color: AppColors.amber),
-            tooltip: 'Today',
-            onPressed: () {
-              final now = DateTime.now();
-              ref.read(selectedDateProvider.notifier).state =
-                  DateTime(now.year, now.month, now.day);
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // ── Date picker row ──────────────────────────────────────────
-          SizedBox(
-            height: 90,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              itemCount: dates.length,
-              itemBuilder: (context, i) {
-                final date = dates[i];
-                final isSelected = date.day == selectedDate.day &&
-                    date.month == selectedDate.month &&
-                    date.year == selectedDate.year;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: DateChip(
-                    date: date,
-                    isSelected: isSelected,
-                    onTap: () => ref
-                        .read(selectedDateProvider.notifier)
-                        .state = date,
+      body: CustomScrollView(
+        slivers: [
+          // ── Gradient Header ──────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.maroon, AppColors.maroonLight, AppColors.orange],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(28),
+                  bottomRight: Radius.circular(28),
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top row
+                      Row(
+                        children: [
+                          Text(
+                            'HISTORY',
+                            style: AppTextStyles.headlineSmall
+                                .copyWith(color: Colors.white, letterSpacing: 2, fontSize: 20),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              final now = DateTime.now();
+                              ref.read(selectedDateProvider.notifier).state =
+                                  DateTime(now.year, now.month, now.day);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.today_rounded,
+                                      color: Colors.white, size: 16),
+                                  const SizedBox(width: 6),
+                                  Text('Today',
+                                      style: AppTextStyles.labelSmall
+                                          .copyWith(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Date picker
+                      SizedBox(
+                        height: 78,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: dates.length,
+                          itemBuilder: (context, i) {
+                            final date = dates[i];
+                            final isSelected =
+                                date.day == selectedDate.day &&
+                                    date.month == selectedDate.month &&
+                                    date.year == selectedDate.year;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: _HistoryDateChip(
+                                date: date,
+                                isSelected: isSelected,
+                                onTap: () => ref
+                                    .read(selectedDateProvider.notifier)
+                                    .state = date,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
 
-          // ── Content ──────────────────────────────────────────────────
-          Expanded(
-            child: shopStatusAsync.when(
-              data: (status) {
-                if (!status.isOpen) {
-                  return _ClosedDayState(date: selectedDate);
-                }
-                return ordersAsync.when(
-                  data: (orders) => _OrdersList(
-                      orders: orders, selectedDate: selectedDate),
-                  loading: () => const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.amber),
-                  ),
-                  error: (e, _) => _ErrorState(message: e.toString()),
+          // ── Content ───────────────────────────────────────────────────
+          shopStatusAsync.when(
+            data: (status) {
+              if (!status.isOpen) {
+                return SliverFillRemaining(
+                  child: _ClosedDayState(date: selectedDate),
                 );
-              },
-              loading: () => const Center(
+              }
+              return ordersAsync.when(
+                data: (orders) => _OrdersContent(
+                    orders: orders, selectedDate: selectedDate),
+                loading: () => const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.amber),
+                  ),
+                ),
+                error: (e, _) =>
+                    SliverFillRemaining(child: _ErrorState(message: e.toString())),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: Center(
                 child: CircularProgressIndicator(color: AppColors.amber),
               ),
-              error: (e, _) {
-                // If status fetch fails, still show orders
-                return ordersAsync.when(
-                  data: (orders) => _OrdersList(
-                      orders: orders, selectedDate: selectedDate),
-                  loading: () => const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.amber),
-                  ),
-                  error: (e2, _) => _ErrorState(message: e2.toString()),
-                );
-              },
             ),
+            error: (e, _) {
+              return ordersAsync.when(
+                data: (orders) => _OrdersContent(
+                    orders: orders, selectedDate: selectedDate),
+                loading: () => const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.amber),
+                  ),
+                ),
+                error: (e2, _) =>
+                    SliverFillRemaining(child: _ErrorState(message: e2.toString())),
+              );
+            },
           ),
         ],
       ),
@@ -131,139 +192,232 @@ class HistoryScreen extends ConsumerWidget {
   }
 }
 
-// ── Orders list ─────────────────────────────────────────────────────────────
-class _OrdersList extends StatelessWidget {
+// ── History Date Chip (inside the gradient header) ────────────────────────────
+class _HistoryDateChip extends StatelessWidget {
+  final DateTime date;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _HistoryDateChip({
+    required this.date,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final day = DateFormat('dd').format(date);
+    final month = DateFormat('MMM').format(date).toUpperCase();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 56,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              day,
+              style: AppTextStyles.headlineSmall.copyWith(
+                color: isSelected ? AppColors.maroon : Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              month,
+              style: AppTextStyles.labelSmall.copyWith(
+                color: isSelected ? AppColors.orange : Colors.white70,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Orders Content (as slivers) ─────────────────────────────────────────────
+class _OrdersContent extends StatelessWidget {
   final List<Order> orders;
   final DateTime selectedDate;
 
-  const _OrdersList({required this.orders, required this.selectedDate});
+  const _OrdersContent({required this.orders, required this.selectedDate});
 
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64,
-                color: AppColors.textSecondaryDark.withValues(alpha: 0.4)),
-            const SizedBox(height: 12),
-            Text('No orders on this day',
-                style: AppTextStyles.bodyMedium
-                    .copyWith(color: AppColors.textSecondaryDark)),
-          ],
+      return SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.cardDark,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.receipt_long_outlined,
+                    size: 48,
+                    color: AppColors.textSecondaryDark.withValues(alpha: 0.5)),
+              ),
+              const SizedBox(height: 16),
+              Text('No orders on this day',
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: AppColors.textSecondaryDark)),
+            ],
+          ),
         ),
       );
     }
 
-    final totalSales =
-        orders.fold(0.0, (sum, o) => sum + o.total);
+    final totalSales = orders.fold(0.0, (sum, o) => sum + o.total);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // ── Summary card ───────────────────────────────────────────────
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.maroon.withValues(alpha: 0.8),
-                AppColors.cardDark,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return SliverPadding(
+      padding: const EdgeInsets.all(20),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          // ── Summary Card ──────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.maroon.withValues(alpha: 0.6),
+                  AppColors.cardDark,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border:
+                  Border.all(color: AppColors.maroon.withValues(alpha: 0.3)),
             ),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.maroon, width: 0.5),
-          ),
-          child: Row(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                          DateFormat('EEEE, dd MMM').format(selectedDate),
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondaryDark)),
+                      const SizedBox(height: 6),
+                      Text('TOTAL SALES',
+                          style: AppTextStyles.labelSmall.copyWith(
+                              color: Colors.white54,
+                              letterSpacing: 1.5)),
+                      const SizedBox(height: 4),
+                      Text('₹${totalSales.toStringAsFixed(0)}',
+                          style: AppTextStyles.priceTotal
+                              .copyWith(fontSize: 30)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text('${orders.length}',
+                          style: AppTextStyles.headlineLarge.copyWith(
+                              color: AppColors.amber, fontSize: 28)),
+                      Text('orders',
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: AppColors.textSecondaryDark)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0),
+
+          const SizedBox(height: 24),
+
+          // ── Transaction label ──────────────────────────────────────────
+          Row(
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(DateFormat('dd MMM yyyy').format(selectedDate),
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.textSecondaryDark)),
-                    const SizedBox(height: 4),
-                    Text('TOTAL SALES',
-                        style: AppTextStyles.labelSmall.copyWith(
-                            color: AppColors.textSecondaryDark,
-                            letterSpacing: 1.5)),
-                    Text('₹${totalSales.toStringAsFixed(2)}',
-                        style: AppTextStyles.priceTotal),
-                  ],
+              Container(
+                width: 3,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: AppColors.amber,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('${orders.length}',
-                      style: AppTextStyles.headlineLarge
-                          .copyWith(color: Colors.white)),
-                  Text('orders',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.textSecondaryDark)),
-                ],
-              ),
+              const SizedBox(width: 8),
+              Text('TRANSACTIONS',
+                  style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondaryDark,
+                      letterSpacing: 2)),
             ],
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-        // ── Transaction list ───────────────────────────────────────────
-        Text('TRANSACTIONS',
-            style: AppTextStyles.labelSmall
-                .copyWith(color: AppColors.textSecondaryDark, letterSpacing: 2)),
-        const SizedBox(height: 10),
-        ...orders.map((order) => _OrderCard(order: order)),
-      ],
+          // ── Order cards ────────────────────────────────────────────────
+          ...orders.asMap().entries.map((entry) => _OrderCard(
+                order: entry.value,
+                index: entry.key,
+              )),
+        ]),
+      ),
     );
   }
 }
 
 class _OrderCard extends StatelessWidget {
   final Order order;
-  const _OrderCard({required this.order});
+  final int index;
+  const _OrderCard({required this.order, required this.index});
 
   @override
   Widget build(BuildContext context) {
     final time = DateFormat('hh:mm a').format(order.timestamp);
     final isCash = order.paymentMode == PaymentMode.cash;
+    final payColor = isCash ? AppColors.cashTag : AppColors.upiTag;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.dividerDark, width: 0.5),
       ),
       child: Row(
         children: [
           // Payment mode badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: (isCash ? AppColors.cashTag : AppColors.upiTag)
-                  .withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isCash ? AppColors.cashTag : AppColors.upiTag,
-                width: 0.5,
-              ),
+              color: payColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              order.paymentMode.label.toUpperCase(),
-              style: AppTextStyles.labelSmall.copyWith(
-                color: isCash ? AppColors.cashTag : AppColors.upiTag,
-                fontSize: 10,
+            child: Center(
+              child: Icon(
+                isCash ? Icons.payments_outlined : Icons.qr_code_2_rounded,
+                color: payColor,
+                size: 22,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           // Phone + time
           Expanded(
             child: Column(
@@ -271,21 +425,45 @@ class _OrderCard extends StatelessWidget {
               children: [
                 Text(order.phone,
                     style: AppTextStyles.labelMedium
-                        .copyWith(color: Colors.white, fontSize: 13)),
-                Text(time,
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textSecondaryDark)),
+                        .copyWith(color: Colors.white, fontSize: 14)),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(Icons.access_time_rounded,
+                        size: 12, color: AppColors.textSecondaryDark),
+                    const SizedBox(width: 4),
+                    Text(time,
+                        style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textSecondaryDark)),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: payColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        order.paymentMode.label.toUpperCase(),
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: payColor,
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           // Amount
           Text(
-            '₹${order.total.toStringAsFixed(2)}',
-            style: AppTextStyles.price.copyWith(fontSize: 16),
+            '₹${order.total.toStringAsFixed(0)}',
+            style: AppTextStyles.price.copyWith(fontSize: 17),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
   }
 }
 
@@ -299,19 +477,26 @@ class _ClosedDayState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.store_outlined,
-              size: 64, color: AppColors.textSecondaryDark),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.cardDark,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.store_outlined,
+                size: 48, color: AppColors.textSecondaryDark),
+          ),
+          const SizedBox(height: 20),
           Text(
-            'Shop was closed on this day',
-            style: AppTextStyles.bodyMedium
+            'Shop was closed',
+            style: AppTextStyles.headlineSmall
                 .copyWith(color: AppColors.textSecondaryDark),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             DateFormat('EEEE, dd MMMM yyyy').format(date),
-            style: AppTextStyles.bodySmall
-                .copyWith(color: AppColors.textSecondaryDark.withValues(alpha: 0.6)),
+            style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondaryDark.withValues(alpha: 0.6)),
           ),
         ],
       ),
@@ -329,9 +514,16 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline,
-              size: 48, color: AppColors.errorRed),
-          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.errorRed.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.error_outline,
+                size: 40, color: AppColors.errorRed),
+          ),
+          const SizedBox(height: 16),
           Text('Error loading data',
               style: AppTextStyles.bodyMedium
                   .copyWith(color: AppColors.textSecondaryDark)),

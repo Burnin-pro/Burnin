@@ -33,14 +33,14 @@ class AppColors {
 
   // ── Neutrals ─────────────────────────────────────────────────────────────
   static const Color black = Color(0xFF000000);
-  static const Color scaffoldDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color cardDark = Color(0xFF252525);
-  static const Color dividerDark = Color(0xFF2E2E2E);
+  static const Color scaffoldDark = Color(0xFF1A1412); // Warm near-black
+  static const Color surfaceDark = Color(0xFF261D1A);
+  static const Color cardDark = Color(0xFF332724);
+  static const Color dividerDark = Color(0xFF40312D);
 
-  static const Color scaffoldLight = Color(0xFFF5F0F0); // warm off-white
+  static const Color scaffoldLight = Color(0xFFFDFBF7); // Warm cream/off-white
   static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color cardLight = Color(0xFFFFEEEE); // very light maroon tint
+  static const Color cardLight = Color(0xFFFAF5EF); // Very light warm tint
 
   // ── Text ─────────────────────────────────────────────────────────────────
   static const Color textPrimaryDark = Color(0xFFFFFFFF);

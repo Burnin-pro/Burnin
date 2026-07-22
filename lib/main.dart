@@ -10,8 +10,10 @@ import 'screens/add_item/add_item_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import 'screens/history/history_screen.dart';
 import 'screens/login/login_screen.dart';
+import 'screens/main/main_screen.dart';
 import 'screens/menu/menu_screen.dart';
 import 'screens/payment/payment_screen.dart';
+import 'screens/profile/about_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'theme/app_theme.dart';
@@ -59,12 +61,13 @@ class BurninApp extends ConsumerWidget {
       routes: {
         '/': (ctx) => const SplashScreen(),
         '/login': (ctx) => const LoginScreen(),
-        '/menu': (ctx) => const MenuScreen(),
+        '/menu': (ctx) => const MainScreen(),
         '/cart': (ctx) => const CartScreen(),
         '/payment': (ctx) => const PaymentScreen(),
         '/add-item': (ctx) => const AddItemScreen(),
         '/history': (ctx) => const HistoryScreen(),
         '/profile': (ctx) => const ProfileScreen(),
+        '/about': (ctx) => const AboutScreen(),
       },
 
       // ── Page transition: warm upward slide ─────────────────────────
@@ -72,12 +75,13 @@ class BurninApp extends ConsumerWidget {
         final routes = <String, WidgetBuilder>{
           '/': (ctx) => const SplashScreen(),
           '/login': (ctx) => const LoginScreen(),
-          '/menu': (ctx) => const MenuScreen(),
+          '/menu': (ctx) => const MainScreen(),
           '/cart': (ctx) => const CartScreen(),
           '/payment': (ctx) => const PaymentScreen(),
           '/add-item': (ctx) => const AddItemScreen(),
           '/history': (ctx) => const HistoryScreen(),
           '/profile': (ctx) => const ProfileScreen(),
+          '/about': (ctx) => const AboutScreen(),
         };
 
         final builder = routes[settings.name];

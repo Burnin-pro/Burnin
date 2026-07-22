@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/menu_item.dart';
 import '../../providers/cart_provider.dart';
@@ -9,7 +13,6 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/quantity_stepper.dart';
 import '../../widgets/veg_dot.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 /// Riverpod provider for the real-time menu item stream.
 final menuItemsProvider = StreamProvider<List<MenuItem>>((ref) {
@@ -39,6 +42,32 @@ class MenuScreen extends ConsumerStatefulWidget {
 
 class _MenuScreenState extends ConsumerState<MenuScreen> {
   final _searchController = TextEditingController();
+  bool _isSearchExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showWelcomePopup();
+    });
+  }
+
+  void _showWelcomePopup() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Welcome',
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, animation, secondaryAnimation) => const _WelcomePopup(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return Transform.scale(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack).value,
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {
@@ -62,246 +91,294 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldDark,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── Top Bar ───────────────────────────────────────────────────
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
+      body: CustomScrollView(
+        slivers: [
+          // ── Premium Header with Logo ─────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: const BoxDecoration(
+                color: AppColors.orange,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+              ),
+              child: Stack(
                 children: [
-                  const AppLogo(size: 44),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('BURNIN',
-                            style: AppTextStyles.headlineSmall
-                                .copyWith(color: Colors.white, letterSpacing: 2)),
-                        Text('HOTFIRE',
-                            style: AppTextStyles.tagline
-                                .copyWith(fontSize: 10)),
-                      ],
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 240,
+                    child: CustomPaint(
+                      painter: _PopupWavyPainter(color: Colors.white),
                     ),
                   ),
-                  // Shop open/close toggle
-                  shopAsync.when(
-                    data: (isOpen) => GestureDetector(
-                      onTap: () => _toggleShopStatus(isOpen),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                  SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left: Logo in white space
+                              const AppLogo(size: 140, showTagline: false),
+                              
+                              const Spacer(),
+                              
+                              // Right: Action Buttons
+                              _HeaderIconButton(
+                                icon: Icons.add_circle_outline_rounded,
+                                onTap: () => Navigator.of(context).pushNamed('/add-item'),
+                              ),
+                              const SizedBox(width: 8),
+                              _HeaderIconButton(
+                                icon: Icons.person_outline_rounded,
+                                onTap: () => Navigator.of(context).pushNamed('/profile'),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Shop toggle
+                          shopAsync.when(
+                            data: (isOpen) => GestureDetector(
+                              onTap: () => _toggleShopStatus(isOpen),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isOpen
+                                      ? Colors.white.withValues(alpha: 0.2)
+                                      : Colors.black.withValues(alpha: 0.3),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isOpen
+                                        ? Colors.white
+                                        : Colors.white54,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: isOpen
+                                            ? AppColors.vegGreen
+                                            : AppColors.nonVegRed,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      isOpen ? 'OPEN' : 'CLOSED',
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                          
+                          const SizedBox(height: 24),
+
+                      // Search Bar
+                      Container(
+                        height: 46,
                         decoration: BoxDecoration(
-                          color: isOpen
-                              ? AppColors.vegGreen.withValues(alpha: 0.15)
-                              : AppColors.nonVegRed.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isOpen
-                                ? AppColors.vegGreen
-                                : AppColors.nonVegRed,
-                            width: 1,
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
+                          onChanged: (v) =>
+                              ref.read(searchQueryProvider.notifier).state = v,
+                          decoration: InputDecoration(
+                            hintText: 'Search menu...',
+                            hintStyle: AppTextStyles.bodyMedium.copyWith(color: Colors.white54),
+                            prefixIcon: const Icon(Icons.search_rounded,
+                                color: Colors.white70, size: 22),
+                            suffixIcon: searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.close,
+                                        color: Colors.white70, size: 20),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      ref.read(searchQueryProvider.notifier).state = '';
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: isOpen
-                                    ? AppColors.vegGreen
-                                    : AppColors.nonVegRed,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              isOpen ? 'OPEN' : 'CLOSED',
-                              style: AppTextStyles.labelSmall.copyWith(
-                                color: isOpen
-                                    ? AppColors.vegGreen
-                                    : AppColors.nonVegRed,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
+                      ),
+                        ],
                       ),
                     ),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                  const SizedBox(width: 10),
-                  // Add item
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline,
-                        color: AppColors.amber),
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/add-item'),
-                  ),
-                  // Profile
-                  IconButton(
-                    icon: const Icon(Icons.person_outline_rounded,
-                        color: AppColors.textSecondaryDark),
-                    onPressed: () =>
-                        Navigator.of(context).pushNamed('/profile'),
                   ),
                 ],
               ),
             ),
+          ),
 
-            // ── Search ────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white),
-                onChanged: (v) =>
-                    ref.read(searchQueryProvider.notifier).state = v,
-                decoration: InputDecoration(
-                  hintText: 'Search menu...',
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      color: AppColors.textSecondaryDark),
-                  suffixIcon: searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.close,
-                              color: AppColors.textSecondaryDark),
-                          onPressed: () {
-                            _searchController.clear();
-                            ref.read(searchQueryProvider.notifier).state = '';
-                          },
-                        )
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Category Pills ────────────────────────────────────────────
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: ['All', 'Food', 'Drinks'].map((cat) {
-                  final selected = category == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: GestureDetector(
-                      onTap: () => ref
-                          .read(categoryFilterProvider.notifier)
-                          .state = cat,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.maroon
-                              : AppColors.cardDark,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.amber
-                                : AppColors.dividerDark,
-                            width: selected ? 1.5 : 0.5,
+          // ── Category Pills ──────────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+              child: SizedBox(
+                height: 40,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: ['All', 'Food', 'Drinks'].map((cat) {
+                    final selected = category == cat;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: GestureDetector(
+                        onTap: () => ref
+                            .read(categoryFilterProvider.notifier)
+                            .state = cat,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: selected ? AppColors.flameGradientHorizontal : null,
+                            color: selected ? null : AppColors.cardDark,
+                            borderRadius: BorderRadius.circular(20),
+                            border: selected ? null : Border.all(
+                              color: AppColors.dividerDark,
+                              width: 0.5,
+                            ),
+                            boxShadow: selected
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.maroon.withValues(alpha: 0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Text(
+                            cat.toUpperCase(),
+                            style: AppTextStyles.pill.copyWith(
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textSecondaryDark,
+                            ),
                           ),
                         ),
-                        child: Text(
-                          cat.toUpperCase(),
-                          style: AppTextStyles.pill.copyWith(
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textSecondaryDark,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Menu Grid ─────────────────────────────────────────────────
-            Expanded(
-              child: menuAsync.when(
-                data: (items) {
-                  final filtered = items.where((item) {
-                    final catMatch =
-                        category == 'All' || item.category == category;
-                    final searchMatch = searchQuery.isEmpty ||
-                        item.name
-                            .toLowerCase()
-                            .contains(searchQuery.toLowerCase());
-                    return catMatch && searchMatch;
-                  }).toList();
-
-                  if (filtered.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.search_off_rounded,
-                              size: 64,
-                              color: AppColors.textSecondaryDark
-                                  .withValues(alpha: 0.4)),
-                          const SizedBox(height: 12),
-                          Text('No items found',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                  color: AppColors.textSecondaryDark)),
-                        ],
                       ),
                     );
-                  }
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      return _MenuItemCard(item: filtered[index]);
-                    },
-                  );
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.amber),
-                ),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_off_rounded,
-                          size: 48, color: AppColors.textSecondaryDark),
-                      const SizedBox(height: 12),
-                      Text('Could not load menu',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.textSecondaryDark)),
-                      const SizedBox(height: 8),
-                      Text('Check your connection',
-                          style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.textSecondaryDark)),
-                    ],
-                  ),
+                  }).toList(),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+
+          // ── Menu Grid ───────────────────────────────────────────────────
+          menuAsync.when(
+            data: (items) {
+              final filtered = items.where((item) {
+                final catMatch =
+                    category == 'All' || item.category == category;
+                final searchMatch = searchQuery.isEmpty ||
+                    item.name
+                        .toLowerCase()
+                        .contains(searchQuery.toLowerCase());
+                return catMatch && searchMatch;
+              }).toList();
+
+              if (filtered.isEmpty) {
+                return SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search_off_rounded,
+                            size: 64,
+                            color: AppColors.textSecondaryDark
+                                .withValues(alpha: 0.4)),
+                        const SizedBox(height: 12),
+                        Text('No items found',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondaryDark)),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+                sliver: SliverGrid(
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.72,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      return _MenuItemCard(item: filtered[index])
+                          .animate()
+                          .fadeIn(delay: (50 * index).ms, duration: 400.ms)
+                          .slideY(begin: 0.05, end: 0);
+                    },
+                    childCount: filtered.length,
+                  ),
+                ),
+              );
+            },
+            loading: () => const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.amber),
+              ),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.cloud_off_rounded,
+                        size: 48, color: AppColors.textSecondaryDark),
+                    const SizedBox(height: 12),
+                    Text('Could not load menu',
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.textSecondaryDark)),
+                    const SizedBox(height: 8),
+                    Text('Check your connection',
+                        style: AppTextStyles.bodySmall
+                            .copyWith(color: AppColors.textSecondaryDark)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
 
-      // ── Sticky cart bar ───────────────────────────────────────────────
+      // ── Sticky cart bar ─────────────────────────────────────────────────
       bottomNavigationBar: cart.totalItemCount > 0
           ? _CartBar(
               itemCount: cart.totalItemCount,
@@ -309,6 +386,29 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               onTap: () => Navigator.of(context).pushNamed('/cart'),
             )
           : null,
+    );
+  }
+}
+
+// ── Header icon button ────────────────────────────────────────────────────────
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.orange.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: AppColors.orange, size: 24),
+      ),
     );
   }
 }
@@ -326,64 +426,91 @@ class _MenuItemCard extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.dividerDark, width: 0.5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: qty > 0 ? AppColors.amber.withValues(alpha: 0.5) : AppColors.dividerDark,
+          width: qty > 0 ? 1.5 : 0.5,
+        ),
+        boxShadow: qty > 0
+            ? [
+                BoxShadow(
+                  color: AppColors.amber.withValues(alpha: 0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image
           Expanded(
-            child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              child: item.imageUrl != null
-                  ? CachedNetworkImage(
-                      imageUrl: item.imageUrl!,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => _PlaceholderImage(),
-                    )
-                  : _PlaceholderImage(),
+            flex: 5,
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(18)),
+                  child: item.imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: item.imageUrl!,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _PlaceholderImage(),
+                        )
+                      : _PlaceholderImage(),
+                ),
+                // Veg/NonVeg badge top-left
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: VegDot(isVeg: item.isVeg, size: 14),
+                  ),
+                ),
+              ],
             ),
           ),
           // Details
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    VegDot(isVeg: item.isVeg),
-                    const Spacer(),
-                    Text(
-                      '₹${item.price.toStringAsFixed(0)}',
-                      style: AppTextStyles.price.copyWith(fontSize: 15),
+          Expanded(
+            flex: 4,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: Colors.white,
+                      fontSize: 13,
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item.name,
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: Colors.white,
-                    fontSize: 13,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                QuantityStepper(
-                  value: qty,
-                  onIncrement: () =>
-                      ref.read(cartProvider.notifier).addItem(item),
-                  onDecrement: () =>
-                      ref.read(cartProvider.notifier).removeItem(item),
-                  height: 30,
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '₹${item.price.toStringAsFixed(0)}',
+                    style: AppTextStyles.price.copyWith(fontSize: 16),
+                  ),
+                  const Spacer(),
+                  QuantityStepper(
+                    value: qty,
+                    onIncrement: () =>
+                        ref.read(cartProvider.notifier).addItem(item),
+                    onDecrement: () =>
+                        ref.read(cartProvider.notifier).removeItem(item),
+                    height: 30,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -396,6 +523,7 @@ class _PlaceholderImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       color: AppColors.surfaceDark,
       child: const Center(
         child: Icon(Icons.fastfood_rounded,
@@ -450,10 +578,9 @@ class _CartBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Text('VIEW CART',
-                style: TextStyle(
+            Text('VIEW CART',
+                style: AppTextStyles.labelMedium.copyWith(
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
                     letterSpacing: 1)),
             const Spacer(),
             Text(
@@ -469,4 +596,235 @@ class _CartBar extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Animated Fire Beam Ring ──────────────────────────────────────────────────
+class _FireBeamRing extends StatefulWidget {
+  final double size;
+  final Widget child;
+
+  const _FireBeamRing({required this.size, required this.child});
+
+  @override
+  State<_FireBeamRing> createState() => _FireBeamRingState();
+}
+
+class _FireBeamRingState extends State<_FireBeamRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: widget.size + 8,
+          height: widget.size + 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: SweepGradient(
+              colors: const [
+                AppColors.maroonDark,
+                AppColors.amber,
+                AppColors.amberLight,
+                Colors.white,
+                AppColors.orange,
+                AppColors.maroon,
+                AppColors.maroonDark,
+              ],
+              stops: const [0.0, 0.15, 0.3, 0.5, 0.7, 0.85, 1.0],
+              transform: GradientRotation(_controller.value * 2 * math.pi),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.amber.withValues(alpha: 0.3),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.all(4), // Border width
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: Center(child: widget.child),
+      ),
+    );
+  }
+}
+
+// ── Welcome Popup ───────────────────────────────────────────────────────────
+class _WelcomePopup extends StatefulWidget {
+  const _WelcomePopup();
+
+  @override
+  State<_WelcomePopup> createState() => _WelcomePopupState();
+}
+
+class _WelcomePopupState extends State<_WelcomePopup> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 5), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 340,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.orange,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.maroon.withValues(alpha: 0.4),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Wavy top (White)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 250,
+                child: CustomPaint(
+                  painter: _PopupWavyPainter(color: Colors.white),
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32, 12, 32, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Logo
+                    const AppLogo(size: 140, showTagline: false)
+                        .animate().scale(
+                          begin: const Offset(0.5, 0.5),
+                          duration: 600.ms,
+                          curve: Curves.easeOutBack,
+                        ),
+                    const SizedBox(height: 36),
+
+                    Text(
+                      'Welcome to Billing!',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.headlineSmall.copyWith(
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
+                    const SizedBox(height: 12),
+
+                    Text(
+                      'Ready to take some orders?',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ).animate().fadeIn(delay: 300.ms),
+                    const SizedBox(height: 36),
+
+                    // Close Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.orange,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: Text(
+                          'CLOSE',
+                          style: AppTextStyles.labelLarge.copyWith(
+                            color: AppColors.orange,
+                            letterSpacing: 2,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 400.ms).scale(curve: Curves.easeOutBack),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Wavy Painter for Popup ──────────────────────────────────────────────────
+class _PopupWavyPainter extends CustomPainter {
+  final Color color;
+  _PopupWavyPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = Path();
+    path.lineTo(0, size.height * 0.6);
+    path.quadraticBezierTo(
+        size.width * 0.25, size.height * 0.9,
+        size.width * 0.5, size.height * 0.6);
+    path.quadraticBezierTo(
+        size.width * 0.75, size.height * 0.3,
+        size.width, size.height * 0.8);
+    path.lineTo(size.width, 0);
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PopupWavyPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

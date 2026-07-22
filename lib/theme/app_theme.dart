@@ -57,6 +57,8 @@ class AppTheme {
       brightness: Brightness.dark,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.scaffoldDark,
+      splashColor: AppColors.maroonGlow,
+      highlightColor: AppColors.flameGlow.withValues(alpha: 0.1),
 
       // ── AppBar ───────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
@@ -327,6 +329,8 @@ class AppTheme {
       brightness: Brightness.light,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.scaffoldLight,
+      splashColor: AppColors.maroonGlow.withValues(alpha: 0.1),
+      highlightColor: AppColors.flameGlow.withValues(alpha: 0.05),
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.scaffoldLight,
         foregroundColor: AppColors.textPrimaryLight,

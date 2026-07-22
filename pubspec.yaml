@@ -49,6 +49,8 @@ dependencies:
 
   # Cupertino icons (unused but kept)
   cupertino_icons: ^1.0.8
+  flutter_animate: ^4.5.2
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
