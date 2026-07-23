@@ -37,16 +37,32 @@ class WhatsAppService {
     required double total,
   }) {
     final sb = StringBuffer();
-    sb.writeln('🔥 *$shopName* — Your Bill');
-    sb.writeln('─' * 28);
+    sb.writeln('🍔🍟 *${shopName.toUpperCase()}* 🍟🍔');
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('🧾 *ORDER RECEIPT*');
+    sb.writeln('📅 ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}');
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━');
+    
     for (final item in items) {
       final subtotal = (item.qty * item.price).toStringAsFixed(2);
-      sb.writeln('${item.name} x${item.qty}  ₹$subtotal');
+      sb.writeln('🔹 *${item.name}*');
+      sb.writeln('      ${item.qty} x ₹${item.price.toStringAsFixed(2)} = ₹$subtotal');
     }
-    sb.writeln('─' * 28);
-    sb.writeln('*Total: ₹${total.toStringAsFixed(2)}*');
+    
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('💰 *GRAND TOTAL: ₹${total.toStringAsFixed(2)}*');
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━');
     sb.writeln();
-    sb.writeln('Please scan the UPI QR code to pay. Thank you! 🙏');
+    sb.writeln('✅ Thank you for eating at $shopName! 🙏');
+    sb.writeln();
+    sb.writeln('Scan the QR code below to pay securely via UPI:');
+    
+    // Generate a dummy QR code link. WhatsApp will automatically show an image preview for this link!
+    final dummyUpiString = Uri.encodeComponent('upi://pay?pa=dummy@upi&pn=BurninShop&am=${total.toStringAsFixed(2)}');
+    final dummyQrLink = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$dummyUpiString';
+    
+    sb.writeln(dummyQrLink);
+    
     return sb.toString();
   }
 }

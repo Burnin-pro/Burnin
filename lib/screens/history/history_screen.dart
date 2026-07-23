@@ -9,6 +9,7 @@ import '../../services/firebase_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/date_chip.dart';
+import 'order_detail_screen.dart';
 
 /// Provider for the list of available dates (last 30 days).
 final availableDatesProvider = Provider<List<DateTime>>((ref) {
@@ -422,14 +423,22 @@ class _OrderCard extends StatelessWidget {
     final isCash = order.paymentMode == PaymentMode.cash;
     final payColor = isCash ? AppColors.cashTag : AppColors.upiTag;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).colorScheme.outline, width: 0.5),
-      ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => OrderDetailScreen(order: order),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).colorScheme.outline, width: 0.5),
+        ),
       child: Row(
         children: [
           // Payment mode badge
@@ -494,7 +503,7 @@ class _OrderCard extends StatelessWidget {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
+    )).animate().fadeIn(delay: (50 * index).ms, duration: 300.ms);
   }
 }
 
