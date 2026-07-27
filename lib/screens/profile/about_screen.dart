@@ -45,7 +45,7 @@ class AboutScreen extends StatelessWidget {
               top: 0,
               left: 0,
               right: 0,
-              height: size.height * 0.35,
+              height: size.height * 0.45,
               child: CustomPaint(
                 painter: _AboutWavyPainter(color: Theme.of(context).scaffoldBackgroundColor),
               ),
@@ -59,8 +59,8 @@ class AboutScreen extends StatelessWidget {
                   // App Icon directly on the white background (top)
                   Image.asset(
                     'assets/images/appicon.png',
-                    width: 140,
-                    height: 140,
+                    width: 160,
+                    height: 160,
                   )
                       .animate()
                       .scale(

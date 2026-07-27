@@ -22,8 +22,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     super.initState();
     
-    // Fallback for Web autoplay block or precision issues: max 4 seconds.
-    Future.delayed(const Duration(seconds: 4), () {
+    // Fallback for Web autoplay block or precision issues: max 10 seconds.
+    Future.delayed(const Duration(seconds: 10), () {
       if (mounted && !_navigating) {
         _checkAuthAndNavigate();
       }
@@ -55,7 +55,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       final duration = _controller.value.duration.inMilliseconds;
       
       // Allow a 100ms margin for Web floating point precision issues
-      if (position >= duration - 100) {
+      if (duration > 0 && position >= duration - 100) {
         _checkAuthAndNavigate();
       }
     }
@@ -94,10 +94,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Widget build(BuildContext context) {
     // Also listen to auth changes in case the login state resolves very late
     ref.listen(authStateProvider, (prev, next) {
-      // We don't force navigate here anymore; we wait for the video to finish.
-      // But if the video is already done and we were waiting on auth, we can check.
-      if (!next.isLoading && _controller.value.isInitialized && !_controller.value.isPlaying && _controller.value.duration == _controller.value.position) {
-         _checkAuthAndNavigate();
+      // We wait for the video to finish before navigating.
+      // If the video is already done and we were waiting on auth, check now.
+      if (!next.isLoading && _controller.value.isInitialized && !_controller.value.isPlaying) {
+         final duration = _controller.value.duration.inMilliseconds;
+         final position = _controller.value.position.inMilliseconds;
+         if (duration > 0 && position >= duration - 100) {
+           _checkAuthAndNavigate();
+         }
       }
     });
 
