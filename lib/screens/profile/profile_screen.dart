@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -174,13 +175,13 @@ class ProfileScreen extends ConsumerWidget {
                 ).animate().fadeIn(delay: 150.ms),
 
                 _SettingsTile(
-                  icon: Icons.notifications_none_rounded,
+                  icon: Icons.query_stats_rounded,
                   iconBg: AppColors.amber,
-                  title: 'Notifications',
-                  subtitle: 'Manage alerts',
+                  title: 'Sales & Analytics',
+                  subtitle: 'View your performance',
                   trailing: Icon(Icons.chevron_right_rounded,
                       color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                  onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                  onTap: () => Navigator.of(context).pushNamed('/sales'),
                 ).animate().fadeIn(delay: 200.ms),
 
                 const SizedBox(height: 28),
@@ -308,11 +309,24 @@ class _FireBeamAvatarState extends State<_FireBeamAvatar>
   @override
   void initState() {
     super.initState();
-    _base64Image = FirebaseAuth.instance.currentUser?.photoURL;
+    _loadProfileImage();
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2500),
     )..repeat();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedImage = prefs.getString('profile_image_$uid');
+      if (savedImage != null && mounted) {
+        setState(() {
+          _base64Image = savedImage;
+        });
+      }
+    }
   }
 
   @override
@@ -332,8 +346,12 @@ class _FireBeamAvatarState extends State<_FireBeamAvatar>
           _base64Image = base64String;
         });
 
-        // Save persistently to user profile
-        await FirebaseAuth.instance.currentUser?.updatePhotoURL(base64String);
+        // Save persistently to local storage instead of Firebase Auth photoURL
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('profile_image_$uid', base64String);
+        }
       }
     } catch (e) {
       debugPrint('Error picking image: $e');

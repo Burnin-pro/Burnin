@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -42,6 +43,8 @@ class LocalNotificationService {
   }
 
   Future<void> requestPermission() async {
+    if (kIsWeb) return;
+    
     final status = await Permission.notification.status;
     if (status.isDenied) {
       await Permission.notification.request();
@@ -65,7 +68,7 @@ class LocalNotificationService {
     if (!_initialized) await init();
     if (await Permission.notification.isGranted) {
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-        'burnin_alerts',
+        'burnin_alerts_high',
         'BurnIn Alerts',
         channelDescription: 'Alerts and summaries for BurnIn shop',
         importance: Importance.max,

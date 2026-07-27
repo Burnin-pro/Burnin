@@ -22,8 +22,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void initState() {
     super.initState();
     
-    // Initialize the local video asset
-    _controller = VideoPlayerController.asset('assets/videos/splashscreen.mp4')
+    // Fallback for Web autoplay block or precision issues: max 4 seconds.
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted && !_navigating) {
+        _checkAuthAndNavigate();
+      }
+    });
+
+    // Initialize the local video asset with mixWithOthers so it can play during Google Meet / calls
+    _controller = VideoPlayerController.asset(
+      'assets/videos/splashscreen.mp4',
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    )
       ..initialize().then((_) {
         // Ensure the first frame is shown and start playing
         if (mounted) {
@@ -40,10 +50,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   void _videoListener() {
     if (!_controller.value.isPlaying &&
-        _controller.value.isInitialized &&
-        (_controller.value.duration == _controller.value.position)) {
-      // The video has finished playing exactly to the end
-      _checkAuthAndNavigate();
+        _controller.value.isInitialized) {
+      final position = _controller.value.position.inMilliseconds;
+      final duration = _controller.value.duration.inMilliseconds;
+      
+      // Allow a 100ms margin for Web floating point precision issues
+      if (position >= duration - 100) {
+        _checkAuthAndNavigate();
+      }
     }
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
-import '../../widgets/app_logo.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -52,98 +51,95 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
 
-            // Content
             SafeArea(
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
 
-                    // Logo directly on the background
-                    const AppLogo(size: 120, showTagline: false)
-                        .animate()
-                        .scale(
-                          duration: 800.ms,
-                          curve: Curves.easeOutBack,
-                          begin: const Offset(0.5, 0.5),
-                        )
-                        .fadeIn(duration: 600.ms),
+                  // App Icon directly on the white background (top)
+                  Image.asset(
+                    'assets/images/appicon.png',
+                    width: 140,
+                    height: 140,
+                  )
+                      .animate()
+                      .scale(
+                        duration: 800.ms,
+                        curve: Curves.easeOutBack,
+                        begin: const Offset(0.5, 0.5),
+                      )
+                      .fadeIn(duration: 600.ms),
 
-                    const Spacer(flex: 2),
+                  const Spacer(flex: 2),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Text(
-                        'This app is private and only available as an Android APK.',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: Colors.white,
-                          height: 1.4,
-                        ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      'This app is private and only available as an Android APK.',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: Colors.white,
+                        height: 1.4,
                       ),
-                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
-                    
-                    const SizedBox(height: 16),
-                    
-                    const Icon(
-                      Icons.android_rounded,
-                      color: AppColors.vegGreen,
-                      size: 44,
-                    ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
+                    ),
+                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
 
-                    const SizedBox(height: 24),
+                  const SizedBox(height: 16),
 
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2)),
+                  const Icon(
+                    Icons.android_rounded,
+                    color: AppColors.vegGreen,
+                    size: 44,
+                  ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
+
+                  const SizedBox(height: 24),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      'Version 1.0',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1,
                       ),
-                      child: Text(
-                        'Version 1.0',
+                    ),
+                  ).animate().fadeIn(delay: 400.ms).scale(curve: Curves.easeOutBack),
+
+                  const Spacer(flex: 3),
+
+                  // Professional Attribution
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 2,
+                        color: AppColors.amberLight.withValues(alpha: 0.5),
+                        margin: const EdgeInsets.only(bottom: 16),
+                      ),
+                      Text(
+                        '© 2026 all rights reserved by',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.white70,
                           letterSpacing: 1,
                         ),
                       ),
-                    ).animate().fadeIn(delay: 400.ms).scale(
-                        curve: Curves.easeOutBack),
-
-                    const Spacer(flex: 3),
-
-                    // Professional Attribution
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 2,
-                          color: AppColors.amberLight.withValues(alpha: 0.5),
-                          margin: const EdgeInsets.only(bottom: 16),
-                        ),
-                        Text(
-                          '© 2026 all rights reserved by',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: Colors.white70,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Image.asset(
-                          'assets/images/codevara.png',
-                          height: 80, // Adjust size as necessary for the Codevara logo
-                        ),
-                      ],
-                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
-
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                      const SizedBox(height: 12),
+                      Image.asset(
+                        'assets/images/codevara.png',
+                        height: 80, // Adjust size as necessary for the Codevara logo
+                      ),
+                    ],
+                  ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0),
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
           ],

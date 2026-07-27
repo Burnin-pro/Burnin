@@ -60,6 +60,8 @@ dependencies:
   
   # Video Player for splash screen
   video_player: ^2.9.2
+  connectivity_plus: ^7.3.1
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

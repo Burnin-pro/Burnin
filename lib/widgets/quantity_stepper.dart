@@ -15,7 +15,7 @@ class QuantityStepper extends StatelessWidget {
     required this.value,
     required this.onIncrement,
     required this.onDecrement,
-    this.height = 32,
+    this.height = 36,
   });
 
   @override

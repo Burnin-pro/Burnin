@@ -11,8 +11,7 @@ import '../../models/shop_status.dart';
 import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
-import '../../providers/menu_provider.dart';
-import '../../providers/shop_provider.dart';
+import '../../providers/network_provider.dart';
 import '../../services/firebase_service.dart';
 import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
@@ -106,6 +105,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final searchQuery = ref.watch(searchQueryProvider);
     final cart = ref.watch(cartProvider);
     final shopAsync = ref.watch(shopStatusTodayProvider);
+    final isOffline = ref.watch(isOfflineProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -274,6 +274,35 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               ),
             ),
           ),
+
+          // ── Offline Banner ──────────────────────────────────────────────
+          if (isOffline)
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.amber.withValues(alpha: 0.15),
+                  border: Border.all(color: AppColors.amber.withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.wifi_off_rounded, color: AppColors.amber, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Offline Mode: Orders will sync automatically',
+                        style: AppTextStyles.labelMedium.copyWith(
+                          color: AppColors.amber,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // ── Category Pills ──────────────────────────────────────────────
           SliverToBoxAdapter(
@@ -553,7 +582,6 @@ class _MenuItemCard extends ConsumerWidget {
                         ref.read(cartProvider.notifier).addItem(item),
                     onDecrement: () =>
                         ref.read(cartProvider.notifier).removeItem(item),
-                    height: 30,
                   ),
                 ],
               ),
@@ -593,13 +621,15 @@ class _CartBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
-    final mainNavBarHeight = bottomSafeArea + 70 + 16;
+    // Scaffold's bottomNavigationBar natively pads by the bottom safe area.
+    // The MainScreen's bottom nav is 70px tall + 16px bottom padding = 86px tall.
+    // Since Scaffold already pushes this up by bottomSafeArea, we only need to add 86 + 3px.
+    const double bottomMargin = 86.0 + 3.0;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.fromLTRB(16, 0, 16, mainNavBarHeight + 4),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, bottomMargin),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           gradient: AppColors.flameGradientHorizontal,

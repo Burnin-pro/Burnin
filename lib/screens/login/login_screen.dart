@@ -186,6 +186,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     const topColor = Colors.white;
 
     return Scaffold(
@@ -196,11 +197,13 @@ class _LoginScreenState extends State<LoginScreen>
         child: Stack(
           children: [
             // White wavy top
-            Positioned(
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
               top: 0,
               left: 0,
               right: 0,
-              height: size.height * 0.45,
+              height: isKeyboardOpen ? size.height * 0.22 : size.height * 0.45,
               child: CustomPaint(
                 painter: _WavyTopPainter(color: topColor),
               ),
@@ -211,13 +214,17 @@ class _LoginScreenState extends State<LoginScreen>
               child: Column(
                 children: [
                   // Logo on white (FIXED, DOES NOT SCROLL)
-                  SizedBox(
-                    height: size.height * 0.33,
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    height: isKeyboardOpen ? size.height * 0.15 : size.height * 0.33,
                     child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 40),
+                      child: AnimatedPadding(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        padding: EdgeInsets.only(bottom: isKeyboardOpen ? 10 : 40),
                         child: AppLogo(
-                          size: math.min(200, size.height * 0.24),
+                          size: isKeyboardOpen ? 80 : math.min(200.0, size.height * 0.24),
                           showTagline: false,
                         ),
                       ),

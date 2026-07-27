@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -14,7 +15,7 @@ import 'screens/main/main_screen.dart';
 import 'screens/menu/menu_screen.dart';
 import 'screens/payment/payment_screen.dart';
 import 'screens/profile/about_screen.dart';
-import 'screens/profile/notification_screen.dart';
+import 'screens/sales/sales_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'theme/app_theme.dart';
@@ -36,6 +37,12 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // Explicitly configure offline persistence
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
 
   runApp(
@@ -72,7 +79,7 @@ class BurninApp extends ConsumerWidget {
         '/history': (ctx) => const HistoryScreen(),
         '/profile': (ctx) => const ProfileScreen(),
         '/about': (ctx) => const AboutScreen(),
-        '/notifications': (ctx) => const NotificationScreen(),
+        '/sales': (ctx) => const SalesScreen(),
       },
 
       // ── Page transition: warm upward slide ─────────────────────────
@@ -80,6 +87,7 @@ class BurninApp extends ConsumerWidget {
         final routes = <String, WidgetBuilder>{
           '/': (ctx) => const SplashScreen(),
           '/login': (ctx) => const LoginScreen(),
+          '/sales': (ctx) => const SalesScreen(),
           '/menu': (ctx) => const MainScreen(),
           '/cart': (ctx) => const CartScreen(),
           '/payment': (ctx) => const PaymentScreen(),
