@@ -79,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen>
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = e is FirebaseAuthException ? AuthService.friendlyError(e) : 'An error occurred. Please try again.';
           _isLoading = false;
         });
       }
@@ -208,32 +208,35 @@ class _LoginScreenState extends State<LoginScreen>
 
             // Main Content
             SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
+              child: Column(
+                children: [
+                  // Logo on white (FIXED, DOES NOT SCROLL)
+                  SizedBox(
+                    height: size.height * 0.33,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 40),
+                        child: AppLogo(
+                          size: math.min(200, size.height * 0.24),
+                          showTagline: false,
+                        ),
                       ),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          children: [
-                            // Logo on white
-                            SizedBox(
-                              height: size.height * 0.33,
-                              child: Center(
-                                child: AppLogo(
-                                  size: math.min(240, size.height * 0.28),
-                                  showTagline: false,
-                                ),
-                              ),
-                            ).animate().fadeIn(duration: 600.ms).slideY(
-                                begin: -0.15,
-                                end: 0,
-                                curve: Curves.easeOutCubic),
+                    ),
+                  ).animate().fadeIn(duration: 600.ms).slideY(
+                      begin: -0.15,
+                      end: 0,
+                      curve: Curves.easeOutCubic),
 
-                            // Form on flame
-                            Expanded(
+                  // Form on flame (SCROLLABLE)
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return SingleChildScrollView(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              minHeight: constraints.maxHeight,
+                            ),
+                            child: IntrinsicHeight(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 28),
@@ -455,12 +458,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
 

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_logo.dart';
+import '../../services/notification_service.dart';
+import '../../providers/auth_provider.dart';
 
 // Import the sub-screens
 import '../menu/menu_screen.dart';
@@ -58,11 +61,75 @@ class _MainScreenState extends ConsumerState<MainScreen> implements MainScreenSt
     });
   }
 
+  Future<bool?> _showExitConfirmation(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.exit_to_app_rounded, color: AppColors.orange, size: 28),
+            const SizedBox(width: 12),
+            Text('Exit BurnIn?', style: AppTextStyles.headlineSmall),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to close the app?',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('CANCEL', style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondaryLight)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.orange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('EXIT', style: AppTextStyles.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(
+    // Listen to auth state to update notifications
+    ref.listen(authStateProvider, (previous, next) {
+      final user = next.valueOrNull;
+      LocalNotificationService.instance.updateNotificationsForUser(user);
+    });
+    
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
+        if (_currentIndex != 0) {
+          // Switch to the Menu tab
+          setState(() {
+            _currentIndex = 0;
+          });
+        } else {
+          // Show exit confirmation popup
+          final exitApp = await _showExitConfirmation(context);
+          if (exitApp == true) {
+            // Close the app entirely so it restarts from splash screen next time
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(
         index: _currentIndex,
         children: _screens,
       ),
@@ -77,7 +144,7 @@ class _MainScreenState extends ConsumerState<MainScreen> implements MainScreenSt
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

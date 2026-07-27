@@ -12,7 +12,7 @@ import '../../widgets/date_chip.dart';
 import 'order_detail_screen.dart';
 
 /// Provider for the list of available dates (last 30 days).
-final availableDatesProvider = Provider<List<DateTime>>((ref) {
+final availableDatesProvider = Provider.autoDispose<List<DateTime>>((ref) {
   final now = DateTime.now();
   return List.generate(30, (i) {
     final d = now.subtract(Duration(days: i));
@@ -21,20 +21,20 @@ final availableDatesProvider = Provider<List<DateTime>>((ref) {
 });
 
 /// Selected date provider.
-final selectedDateProvider = StateProvider<DateTime>((ref) {
+final selectedDateProvider = StateProvider.autoDispose<DateTime>((ref) {
   final now = DateTime.now();
   return DateTime(now.year, now.month, now.day);
 });
 
 /// Orders for the selected date.
 final ordersForDateProvider =
-    StreamProvider.family<List<Order>, String>((ref, dateKey) {
+    StreamProvider.autoDispose.family<List<Order>, String>((ref, dateKey) {
   return FirebaseService.instance.ordersStreamForDate(dateKey);
 });
 
 /// Shop status for selected date.
 final shopStatusForDateProvider =
-    StreamProvider.family<ShopStatus, String>((ref, dateKey) {
+    StreamProvider.autoDispose.family<ShopStatus, String>((ref, dateKey) {
   return FirebaseService.instance.shopStatusStream(dateKey);
 });
 
@@ -323,14 +323,7 @@ class _OrdersContent extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.maroon.withValues(alpha: 0.6),
-                  Theme.of(context).cardColor,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              gradient: AppColors.flameGradientHorizontal,
               borderRadius: BorderRadius.circular(18),
               border:
                   Border.all(color: AppColors.maroon.withValues(alpha: 0.3)),
@@ -344,17 +337,17 @@ class _OrdersContent extends StatelessWidget {
                       Text(
                           DateFormat('EEEE, dd MMM').format(selectedDate),
                           style: AppTextStyles.bodySmall.copyWith(
-                              color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
+                              color: Colors.white70)),
                       const SizedBox(height: 6),
                       Text('TOTAL SALES',
                           style: AppTextStyles.labelSmall.copyWith(
-                              color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : AppColors.textSecondaryLight,
+                              color: Colors.white54,
                               letterSpacing: 1.5)),
                       const SizedBox(height: 4),
                       Text('₹${totalSales.toStringAsFixed(0)}',
                           style: AppTextStyles.priceTotal.copyWith(
                               fontSize: 30,
-                              color: Theme.of(context).colorScheme.onSurface)),
+                              color: Colors.white)),
                     ],
                   ),
                 ),
@@ -371,7 +364,7 @@ class _OrdersContent extends StatelessWidget {
                               color: AppColors.amber, fontSize: 28)),
                       Text('orders',
                           style: AppTextStyles.bodySmall
-                              .copyWith(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
+                              .copyWith(color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -419,6 +412,7 @@ class _OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final time = DateFormat('hh:mm a').format(order.timestamp);
     final isCash = order.paymentMode == PaymentMode.cash;
     final payColor = isCash ? AppColors.cashTag : AppColors.upiTag;
@@ -463,18 +457,18 @@ class _OrderCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(order.phone,
+                Text(order.phone.length > 3 ? order.phone : 'No phone',
                     style: AppTextStyles.labelMedium
-                        .copyWith(color: Colors.white, fontSize: 14)),
+                        .copyWith(color: isDark ? Colors.white : AppColors.textPrimaryLight, fontSize: 14)),
                 const SizedBox(height: 3),
                 Row(
                   children: [
                     Icon(Icons.access_time_rounded,
-                        size: 12, color: AppColors.textSecondaryDark),
+                        size: 12, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                     const SizedBox(width: 4),
                     Text(time,
                         style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondaryDark)),
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight)),
                     const SizedBox(width: 12),
                     Container(
                       padding: const EdgeInsets.symmetric(

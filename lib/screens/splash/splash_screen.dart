@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../services/notification_service.dart';
 
 /// Cinematic Splash Screen — Plays a full-screen video before transitioning to the app.
 class SplashScreen extends ConsumerStatefulWidget {
@@ -46,9 +47,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     }
   }
 
-  void _checkAuthAndNavigate() {
+  void _checkAuthAndNavigate() async {
     if (_navigating || !mounted) return;
     _navigating = true;
+
+    // Ask for permission compulsory after splash finishes
+    await LocalNotificationService.instance.requestPermission();
 
     final authState = ref.read(authStateProvider);
     final user = authState.valueOrNull;
@@ -95,9 +99,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   child: VideoPlayer(_controller),
                 ),
               )
-            : const Center(
-                child: CircularProgressIndicator(color: Colors.white),
-              ),
+            : const SizedBox.shrink(),
       ),
     );
   }

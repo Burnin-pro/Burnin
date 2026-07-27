@@ -12,6 +12,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/qr_service.dart';
+import '../menu/menu_screen.dart';
+import '../../providers/cart_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_logo.dart';
@@ -178,6 +180,7 @@ class ProfileScreen extends ConsumerWidget {
                   subtitle: 'Manage alerts',
                   trailing: Icon(Icons.chevron_right_rounded,
                       color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                  onTap: () => Navigator.of(context).pushNamed('/notifications'),
                 ).animate().fadeIn(delay: 200.ms),
 
                 const SizedBox(height: 28),
@@ -199,6 +202,7 @@ class ProfileScreen extends ConsumerWidget {
                   onTap: () async {
                     final confirm = await _confirmLogout(context);
                     if (confirm == true) {
+                      // Providers will be auto-disposed when MainScreen is unmounted.
                       await AuthService.instance.signOut();
                       if (context.mounted) {
                         Navigator.of(context).pushNamedAndRemoveUntil(
@@ -230,7 +234,7 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ).animate().fadeIn(delay: 350.ms),
 
-                const SizedBox(height: 120),
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 120),
               ]),
             ),
           ),
@@ -473,11 +477,12 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
         left: 24,
         right: 24,
         top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Center(
             child: Container(
@@ -591,6 +596,7 @@ class _ChangePasswordSheetState extends State<_ChangePasswordSheet> {
             icon: Icons.check_circle_outline,
           ),
         ],
+      ),
       ),
     );
   }

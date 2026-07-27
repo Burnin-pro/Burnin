@@ -62,7 +62,7 @@ class OrderDetailScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    order.phone,
+                    order.phone.length > 3 ? order.phone : 'No phone provided',
                     style: AppTextStyles.headlineMedium.copyWith(color: Colors.white),
                   ),
                   const SizedBox(height: 8),

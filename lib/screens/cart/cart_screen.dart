@@ -57,6 +57,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 (name: e.menuItem.name, qty: e.quantity, price: e.menuItem.price))
             .toList(),
         total: cart.totalAmount,
+        upiData: QrService.instance.buildUpiQrData(amount: cart.totalAmount),
       );
       await WhatsAppService.instance.sendBill(
         phone: phone,

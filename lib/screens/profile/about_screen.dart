@@ -46,9 +46,9 @@ class AboutScreen extends StatelessWidget {
               top: 0,
               left: 0,
               right: 0,
-              height: size.height * 0.45,
+              height: size.height * 0.35,
               child: CustomPaint(
-                painter: _AboutWavyPainter(color: Colors.white),
+                painter: _AboutWavyPainter(color: Theme.of(context).scaffoldBackgroundColor),
               ),
             ),
 
@@ -58,10 +58,10 @@ class AboutScreen extends StatelessWidget {
                 width: double.infinity,
                 child: Column(
                   children: [
-                    SizedBox(height: size.height * 0.05),
+                    const SizedBox(height: 16),
 
                     // Logo directly on the background
-                    const AppLogo(size: 180, showTagline: false)
+                    const AppLogo(size: 120, showTagline: false)
                         .animate()
                         .scale(
                           duration: 800.ms,
@@ -70,7 +70,7 @@ class AboutScreen extends StatelessWidget {
                         )
                         .fadeIn(duration: 600.ms),
 
-                    const SizedBox(height: 32),
+                    const Spacer(flex: 2),
 
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -84,12 +84,12 @@ class AboutScreen extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0),
                     
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     
                     const Icon(
                       Icons.android_rounded,
                       color: AppColors.vegGreen,
-                      size: 40,
+                      size: 44,
                     ).animate().fadeIn(delay: 300.ms).scale(curve: Curves.easeOutBack),
 
                     const SizedBox(height: 24),
@@ -114,7 +114,7 @@ class AboutScreen extends StatelessWidget {
                     ).animate().fadeIn(delay: 400.ms).scale(
                         curve: Curves.easeOutBack),
 
-                    const Spacer(),
+                    const Spacer(flex: 3),
 
                     // Professional Attribution
                     Column(

@@ -452,7 +452,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                     ).animate().fadeIn(delay: 350.ms).scale(
                         begin: const Offset(0.95, 0.95),
                         curve: Curves.easeOutBack),
-                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 80),
+                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 120),
                   ],
                 ),
               ),
@@ -632,10 +632,10 @@ class _TypeToggle extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           color:
-              selected ? color.withValues(alpha: 0.15) : AppColors.cardDark,
+              selected ? color.withValues(alpha: 0.15) : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? color : AppColors.dividerDark,
+            color: selected ? color : Theme.of(context).colorScheme.outline,
             width: selected ? 1.5 : 0.5,
           ),
           boxShadow: selected
@@ -655,7 +655,7 @@ class _TypeToggle extends StatelessWidget {
             const SizedBox(width: 8),
             Text(label,
                 style: AppTextStyles.pill.copyWith(
-                  color: selected ? color : AppColors.textSecondaryDark,
+                  color: selected ? color : Theme.of(context).colorScheme.onSurfaceVariant,
                 )),
           ],
         ),

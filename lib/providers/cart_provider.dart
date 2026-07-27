@@ -70,6 +70,6 @@ class CartNotifier extends StateNotifier<CartState> {
 }
 
 /// Global cart provider.
-final cartProvider = StateNotifierProvider<CartNotifier, CartState>(
+final cartProvider = StateNotifierProvider.autoDispose<CartNotifier, CartState>(
   (ref) => CartNotifier(),
 );

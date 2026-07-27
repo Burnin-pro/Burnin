@@ -14,9 +14,12 @@ import 'screens/main/main_screen.dart';
 import 'screens/menu/menu_screen.dart';
 import 'screens/payment/payment_screen.dart';
 import 'screens/profile/about_screen.dart';
+import 'screens/profile/notification_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/splash/splash_screen.dart';
 import 'theme/app_theme.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,6 +54,7 @@ class BurninApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'BurnIn — Staff Portal',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: AppTheme.light,
@@ -68,6 +72,7 @@ class BurninApp extends ConsumerWidget {
         '/history': (ctx) => const HistoryScreen(),
         '/profile': (ctx) => const ProfileScreen(),
         '/about': (ctx) => const AboutScreen(),
+        '/notifications': (ctx) => const NotificationScreen(),
       },
 
       // ── Page transition: warm upward slide ─────────────────────────

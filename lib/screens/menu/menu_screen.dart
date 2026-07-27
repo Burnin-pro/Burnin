@@ -7,8 +7,14 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/menu_item.dart';
+import '../../models/shop_status.dart';
+import '../../models/order.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/menu_provider.dart';
+import '../../providers/shop_provider.dart';
 import '../../services/firebase_service.dart';
+import '../../services/notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_logo.dart';
@@ -16,18 +22,18 @@ import '../../widgets/quantity_stepper.dart';
 import '../../widgets/veg_dot.dart';
 
 /// Riverpod provider for the real-time menu item stream.
-final menuItemsProvider = StreamProvider<List<MenuItem>>((ref) {
+final menuItemsProvider = StreamProvider.autoDispose<List<MenuItem>>((ref) {
   return FirebaseService.instance.menuItemsStream();
 });
 
 /// Selected category filter ('All' | 'Food' | 'Drinks').
-final categoryFilterProvider = StateProvider<String>((ref) => 'All');
+final categoryFilterProvider = StateProvider.autoDispose<String>((ref) => 'All');
 
 /// Search query provider.
-final searchQueryProvider = StateProvider<String>((ref) => '');
+final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
 
 /// Shop open/closed status today.
-final shopStatusTodayProvider = StreamProvider<bool>((ref) {
+final shopStatusTodayProvider = StreamProvider.autoDispose<bool>((ref) {
   final dateKey = FirebaseService.instance.todayKey();
   return FirebaseService.instance
       .shopStatusStream(dateKey)
@@ -80,6 +86,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
     final dateKey = FirebaseService.instance.todayKey();
     await FirebaseService.instance
         .setShopStatus(dateKey: dateKey, isOpen: !current);
+
+    if (current) {
+      // Shop is closing. Calculate income and show local notification.
+      try {
+        final orders = await FirebaseService.instance.ordersStreamForDate(dateKey).first;
+        final totalIncome = orders.fold(0.0, (sum, o) => sum + o.total);
+        await LocalNotificationService.instance.showShopClosedNotification(totalIncome);
+      } catch (e) {
+        debugPrint('Failed to calculate income for notification: $e');
+      }
+    }
   }
 
   @override
@@ -92,7 +109,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    final mainNavBarHeight = bottomSafeArea + 70 + 16;
+    
+    // When cart has items, add enough padding to scroll past the View Cart button (which is roughly 60px tall)
+    final gridBottomPadding = cart.totalItemCount > 0 
+        ? mainNavBarHeight + 4 + 80.0 
+        : mainNavBarHeight + 20.0;
+
     return Scaffold(
+      extendBody: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: CustomScrollView(
         slivers: [
@@ -115,13 +141,13 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                     right: 0,
                     height: 240,
                     child: CustomPaint(
-                      painter: _PopupWavyPainter(color: Colors.white),
+                      painter: _PopupWavyPainter(color: Theme.of(context).scaffoldBackgroundColor),
                     ),
                   ),
                   SafeArea(
                     bottom: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -129,9 +155,30 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Left: Logo in white space
-                              const AppLogo(size: 140, showTagline: false),
+                              const AppLogo(size: 120, showTagline: false),
                               
                               const Spacer(),
+                              
+                              // Notifications Icon
+                              GestureDetector(
+                                onTap: () => Navigator.of(context).pushNamed('/notifications'),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  margin: const EdgeInsets.only(right: 12),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isDark ? Colors.white24 : Colors.black12,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.notifications_none_rounded,
+                                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
                               
                               // Right: Shop Open/Close toggle
                               shopAsync.when(
@@ -144,12 +191,12 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                     decoration: BoxDecoration(
                                       color: isOpen
                                           ? AppColors.vegGreen.withValues(alpha: 0.1)
-                                          : Colors.black.withValues(alpha: 0.05),
+                                          : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: isOpen
                                             ? AppColors.vegGreen
-                                            : Colors.black38,
+                                            : (isDark ? Colors.white70 : Colors.black38),
                                         width: 1.5,
                                       ),
                                     ),
@@ -170,7 +217,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                                         Text(
                                           isOpen ? 'OPEN' : 'CLOSED',
                                           style: AppTextStyles.labelSmall.copyWith(
-                                            color: isOpen ? AppColors.vegGreen : AppColors.textPrimaryLight,
+                                            color: isOpen ? AppColors.vegGreen : (isDark ? Colors.white : AppColors.textPrimaryLight),
                                             fontSize: 12,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -190,9 +237,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
                       Container(
                         height: 46,
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.05)),
+                          color: isDark ? AppColors.cardDark : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? Colors.white24 : Colors.black26, width: 1.2),
                         ),
                         child: TextField(
                           controller: _searchController,
@@ -321,7 +368,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen> {
               }
 
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
+                padding: EdgeInsets.fromLTRB(20, 4, 20, gridBottomPadding),
                 sliver: SliverGrid(
                   gridDelegate:
                       const SliverGridDelegateWithFixedCrossAxisCount(
@@ -546,10 +593,13 @@ class _CartBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    final mainNavBarHeight = bottomSafeArea + 70 + 16;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        margin: EdgeInsets.fromLTRB(16, 0, 16, mainNavBarHeight + 4),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         decoration: BoxDecoration(
           gradient: AppColors.flameGradientHorizontal,
@@ -700,6 +750,8 @@ class _WelcomePopupState extends State<_WelcomePopup> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Center(
       child: Material(
         color: Colors.transparent,
@@ -726,7 +778,7 @@ class _WelcomePopupState extends State<_WelcomePopup> {
                 right: 0,
                 height: 250,
                 child: CustomPaint(
-                  painter: _PopupWavyPainter(color: Colors.white),
+                  painter: _PopupWavyPainter(color: Theme.of(context).scaffoldBackgroundColor),
                 ),
               ),
 
@@ -749,7 +801,7 @@ class _WelcomePopupState extends State<_WelcomePopup> {
                       'Welcome to Billing!',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.headlineSmall.copyWith(
-                        color: Colors.white,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                         letterSpacing: 1.5,
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -761,7 +813,7 @@ class _WelcomePopupState extends State<_WelcomePopup> {
                       'Ready to take some orders?',
                       textAlign: TextAlign.center,
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.white70,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                         fontSize: 16,
                       ),
                     ).animate().fadeIn(delay: 300.ms),
@@ -774,7 +826,7 @@ class _WelcomePopupState extends State<_WelcomePopup> {
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
+                          backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
                           foregroundColor: AppColors.orange,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),

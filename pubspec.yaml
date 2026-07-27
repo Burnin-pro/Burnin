@@ -29,6 +29,12 @@ dependencies:
   # URL / WhatsApp deep link
   url_launcher: ^6.3.1
 
+  # Local Notifications & Permissions
+  flutter_local_notifications: ^18.0.1
+  permission_handler: ^11.3.1
+  timezone: any
+  flutter_timezone: any
+
   # Image Picker (camera / gallery)
   image_picker: ^1.1.2
 

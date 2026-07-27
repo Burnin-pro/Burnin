@@ -35,6 +35,7 @@ class WhatsAppService {
     required String shopName,
     required List<({String name, int qty, double price})> items,
     required double total,
+    required String upiData,
   }) {
     final sb = StringBuffer();
     sb.writeln('🍔🍟 *${shopName.toUpperCase()}* 🍟🍔');
@@ -57,11 +58,12 @@ class WhatsAppService {
     sb.writeln();
     sb.writeln('Scan the QR code below to pay securely via UPI:');
     
-    // Generate a dummy QR code link. WhatsApp will automatically show an image preview for this link!
-    final dummyUpiString = Uri.encodeComponent('upi://pay?pa=dummy@upi&pn=BurninShop&am=${total.toStringAsFixed(2)}');
-    final dummyQrLink = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$dummyUpiString';
+    // Generate a real QR code link using the actual UPI string. 
+    // WhatsApp will automatically show an image preview for this link!
+    final encodedUpi = Uri.encodeComponent(upiData);
+    final qrLink = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$encodedUpi';
     
-    sb.writeln(dummyQrLink);
+    sb.writeln(qrLink);
     
     return sb.toString();
   }
